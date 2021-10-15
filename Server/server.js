@@ -4,7 +4,7 @@ const server = app.listen(8000, () => console.log('The server is all fired up on
 const io = require('socket.io')(server, { cors: true });
 var activeSockets = [];
 var currentPlayersTurn = 0;
-// roomCode > Host,Sockets > name,playerNum
+// roomCode > Host,Deck,Sockets > name,playerNum
 var rooms = {};
 
 io.on('connection', socket => {
@@ -28,14 +28,14 @@ io.on('connection', socket => {
       //gets all players
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('getPlayers');
       console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: false`);
-      io.to(newPlayer.roomCode).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
+      io.to(socket.id).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
 
     } else {
       socket.join(newPlayer.roomCode);
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
       console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: true`);
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
-      io.to(newPlayer.roomCode).emit('setPlayers', [newPlayer.name])
+      io.to(socket.id).emit('setPlayers', [newPlayer.name])
     }
   });
 
@@ -94,18 +94,21 @@ function getSocketsInRoom(roomCode) {
   const arr = Array.from(io.sockets.adapter.rooms).filter(room => !room[1].has(room[0]));
   for (let i = 0; i < arr.length; ++i) {
     if (arr[i][0] === roomCode) {
-      console.log(`getSocketsInRoom: ${arr[i][1]}`)
-      return arr[i][1];
+      console.log(`getSocketsInRoom: ${arr[i][1].keys()}`)
+      return arr[i][1].keys();
     }
   }
   console.log(`getSocketsInRoom roomCode does not exist`)
   return false;
 }
 
-function setupGame(){
+function setupGame(roomCode){
   rooms[roomCode]["sockets"] = getSocketsInRoom(roomCode);
+  console.log(rooms[roomCode]["sockets"]);
   let i = 1;
-  rooms[roomCode]["sockets"].forEach((id)=>{
+  Object.keys(rooms[roomCode]["sockets"]).forEach((id)=>{
+    console.log(id);
+    console.log(`i ${i}`);
     rooms[roomCode]["sockets"][id]["playerNum"] = i;
     io.to(id).emit('playerInfo', i);
     ++i
@@ -116,15 +119,15 @@ function setupGame(){
 
 
 // DECK FUNCTIONS
-function shuffle(){
-  for (let i = 0; i < this.deck.length; ++i) {
+function shuffle(deck){
+  for (let i = 0; i < deck.length; ++i) {
     let x = Math.floor(Math.random() * this.deck.length - 1);
     [this.deck[i], this.deck[x]] = [this.deck[x], this.deck[i]];
   }
 }
 
 function deal(deck){
-  shuffle()
+  shuffle(deck)
   var playerNum = 1;
   var playerHands = [];
   for (let i = 0; i < this.playerCount; ++i) {
@@ -197,7 +200,6 @@ function buildDeck(playerCount){
       console.log(`cardPool: ${cardPool}`)
       console.log(`playerId 52: ${cardPool[52].playerId}`)
   }
-  setDeck(cardPool);
   return cardPool;
 }
 //END DECK FUNCTIONS

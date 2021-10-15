@@ -78,6 +78,8 @@ const GameLobby = () => {
     return (
         <div>
             <h1>Room Code: {roomCode}</h1>
+            <h2>Welcome to the Room: {playerName}</h2>
+            {host ? <p>You Are the Host</p>: <p></p>}
             {
                 players.map((playerName) => {
                     return <div>{playerName}</div>
