@@ -9,7 +9,8 @@ const GameLobby = () => {
 
     const socket = useContext(SocketContext);
     const [roomCode, setRoomCode] = useState('');
-    const [playerName, setPlayerName] = useState('')
+    const [playerName, setPlayerName] = useState('');
+    const [playerNum, setPlayerNum] = useState(0);
     const [players, setPlayers] = useState([]);
     const history = useHistory();
     const [deck, setDeck] = useState([]);
@@ -40,7 +41,13 @@ const GameLobby = () => {
     socket.off('setPlayers').on('setPlayers', players => {
         console.log(`Players ${players}`);
         setPlayers(players);
-    })
+    });
+
+    socket.on('playerInfo', (num)=>{
+        setPlayerNum(num);
+        socket.emit('playerInfo', {roomCode:roomCode,name:playerName});
+
+    });
     //END GENERAL ROUTES
 
     //HOST SPECICIC ROUTES

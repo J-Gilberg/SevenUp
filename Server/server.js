@@ -4,6 +4,7 @@ const server = app.listen(8000, () => console.log('The server is all fired up on
 const io = require('socket.io')(server, { cors: true });
 var activeSockets = [];
 var currentPlayersTurn = 0;
+// roomCode > Host,Sockets > name,playerNum
 var rooms = {};
 
 io.on('connection', socket => {
@@ -51,14 +52,12 @@ io.on('connection', socket => {
 
   socket.on('createGame', (roomCode) => {
     console.log('game created!!');
-    rooms[roomCode]["sockets"] = getSocketsInRoom(roomCode);
-    playerOrder = createPlayerOrder(getSocketsInRoom(roomCode));
-
-
-    // io.to('mainGame').emit('playerHands', hands[i]);
-    // io.to('mainGame').emit('yourTurn', currentPlayersTurn);
+    setupGame(roomCode);
   });
-
+  
+  socket.on('playerInfo', (socket,info) => {
+    rooms[info.roomCode]["sockets"][socket.id]["name"] = info.name;
+  });
 
 
   //GAME START TOUTES
@@ -107,10 +106,22 @@ function createPlayerOrder(sockets){
   //sockets is and Array ["roomCode", "Set{SocketId}"]
   if(sockets){
     sockets[0].forEach((id)=>{
-      sockets[0][id] = 
+      // sockets[0][id] = 
     });
   }
 }
+
+function setupGame(){
+  rooms[roomCode]["sockets"] = getSocketsInRoom(roomCode);
+  let i = 1;
+  rooms[roomCode]["sockets"].forEach((id)=>{
+    rooms[roomCode]["sockets"][id]["playerNum"] = i;
+    io.to(id).emit('playerInfo', i);
+    ++i
+  });
+  rooms[roomCode]["deck"] = buildDeck(Object.keys(rooms[roomCode]["sockets"]).length);
+}
+
 
 // DECK FUNCTIONS
 function shuffle(){
@@ -146,11 +157,11 @@ function deal(deck){
   return playerHands;
 }
 
-function buildDeck(){
+function buildDeck(playerCount){
   // < 6 => 1 deck
   // everyone needs 10+ cards
 
-  let numDecks = Math.ceil(10 / (53 / players.length));
+  let numDecks = Math.ceil(10 / (53 / playerCount));
   console.log(`numDecks: ${numDecks}`)
   let oneDeck = [];
   let cardPool = [];
@@ -197,7 +208,6 @@ function buildDeck(){
   setDeck(cardPool);
   return cardPool;
 }
-
 //END DECK FUNCTIONS
 
 
