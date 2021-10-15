@@ -1,0 +1,7 @@
+Host disconnecting, remove from Host list on server.
+Unit Tests 
+    - Adding players to the rooms
+    - Test Dealing
+    - Test Game Logic
+
+Look into removing socket id on disconnect.
