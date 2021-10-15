@@ -102,15 +102,6 @@ function getSocketsInRoom(roomCode) {
   return false;
 }
 
-function createPlayerOrder(sockets){
-  //sockets is and Array ["roomCode", "Set{SocketId}"]
-  if(sockets){
-    sockets[0].forEach((id)=>{
-      // sockets[0][id] = 
-    });
-  }
-}
-
 function setupGame(){
   rooms[roomCode]["sockets"] = getSocketsInRoom(roomCode);
   let i = 1;
@@ -120,6 +111,7 @@ function setupGame(){
     ++i
   });
   rooms[roomCode]["deck"] = buildDeck(Object.keys(rooms[roomCode]["sockets"]).length);
+  io.to(roomCode).emit('createGame', null);
 }
 
 
