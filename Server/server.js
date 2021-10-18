@@ -7,6 +7,40 @@ var activeSockets = [];
 // roomCode > Host,Deck,Sockets > name,playerNum
 var rooms = {};
 
+class Player{
+  constructor(playerInfo){
+    this.value = playerInfo;
+    this.next = null;
+    this.prev = null;
+  }
+}
+
+class PlayerOrder{
+  constructor(){
+    this.head = null;
+    this.tail = null;
+  }
+
+  addBack(value){
+    if(this.head === null){
+        let node = new Node(value);
+        this.head = node;
+        this.tail = node;
+    }else{
+        let runner = this.head;
+        while(runner.next){
+            runner = runner.next;
+        }
+        let node = new Node(value);
+        runner.next = node;
+        node.prev = runner
+        this.tail = node;
+    }
+  }
+}
+
+let playerOrder = new PlayerOrder();
+
 io.on('connection', socket => {
   // let keys = Object.keys(socket);
   console.log(`Socket Id connected: ${socket.id}`);
@@ -130,7 +164,6 @@ function setupGame(roomCode) {
   io.to(roomCode).emit('createGame', null);
 }
 
-
 // DECK FUNCTIONS
 function shuffle(cardPool) {
   for (let i = 0; i < cardPool.length; ++i) {
@@ -215,6 +248,28 @@ function buildDeck(playerCount) {
     console.log(`playerId 52: ${cardPool[52].playerId}`)
   }
   return cardPool;
+}
+
+function setPlayerOrder(hands) {
+  let starter = 0;
+  for (var i =0; i<hands.length; ++i){
+    players[i].playerHands.push(hands[i]);
+  }
+
+  for (var i =0; i<hands.length; ++i){
+    if (players[i].playerHands.includes('s07')) {
+      starter = i;
+      playerOrder.addBack(players[i]);
+    } else if (playerOrder){
+      playerOrder.addBack(players[i]);
+    }
+  }
+  
+  for (var i =0; i<starter; ++i) {
+    playerOrder.addBack(players[i]);
+  }
+
+  return playerOrder
 }
 //END DECK FUNCTIONS
 
