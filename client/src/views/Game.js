@@ -22,15 +22,25 @@ const Game = (props) => {
             setHand(hand);
         });
 
-        socket.on('cardPlayed', card => {
-            cardsPlayed.push(card);
-        });
-
-        socket.on('yourTurn', () => {
-            setYourTurn(true);
-        });
     }, [])
 
+
+    //GAME LOGIC
+    socket.on('cardPlayed', card => {
+        cardsPlayed.push(card);
+    });
+
+    socket.on('yourTurn', (isTurn) => {
+        setYourTurn(isTurn);
+    });
+
+    socket.on('playerHand', hand=>{
+        setHand(hand);
+    });
+
+    //END GAME LOGIC
+
+    //DISPLAY LOGIC
     // onvlcik for card, set card in hand and overall card pool to played
     // display on 1st game board by default, if not, move on to next available/possible board 
     // 
@@ -54,7 +64,7 @@ const Game = (props) => {
         }
     }
 
-
+    //END DISPLAY LOGIC
 
 
     return (

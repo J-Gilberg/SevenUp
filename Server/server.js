@@ -3,7 +3,7 @@ const app = express();
 const server = app.listen(8000, () => console.log('The server is all fired up on port 8000'));
 const io = require('socket.io')(server, { cors: true });
 var activeSockets = [];
-var currentPlayersTurn = 0;
+
 // roomCode > Host,Deck,Sockets > name,playerNum
 var rooms = {};
 
@@ -14,7 +14,7 @@ io.on('connection', socket => {
   io.emit('connection', null)
 
   //GENERAL ROUTES
-  
+
   //END GENERAL ROUTES
 
   //GAME LOBBY ROUTES
@@ -54,16 +54,14 @@ io.on('connection', socket => {
     console.log('game created!!');
     setupGame(roomCode);
   });
-  
-  socket.on('playerInfo', (socket,info) => {
+
+  socket.on('playerInfo', (socket, info) => {
     rooms[info.roomCode]["sockets"][socket.id]["name"] = info.name;
   });
 
 
-  //GAME START TOUTES
+  //GAME ROUTES
 
-
-  //during game
   socket.on('cardPlayed', (card) => {
     io.emit('cardPlayed', card);
     if (currentPlayersTurn + 1 < activeSockets.length) {
@@ -77,7 +75,22 @@ io.on('connection', socket => {
   socket.on('setFirstPlayer', startingPlayer => {
     currentPlayersTurn = startingPlayer;
   })
+
+  socket.on('dealCards', (deck, roomCode) => {
+    let playerHands = deal(deck, roomCode);
+    let sockets = Object.keys(rooms[roomCode]["sockets"]);
+    for (let i = 0; i < playerHands.length; ++i){
+      io.to(sockets[i]).emit('playerHand', playerHands[i]);
+    }
+  });
+
+  //END GAME ROUTES
+
+
 });
+//^END IO Connection Bracket
+
+
 
 
 function getRooms() {
@@ -102,11 +115,11 @@ function getSocketsInRoom(roomCode) {
   return false;
 }
 
-function setupGame(roomCode){
+function setupGame(roomCode) {
   rooms[roomCode]["sockets"] = getSocketsInRoom(roomCode);
   console.log(rooms[roomCode]["sockets"]);
   let i = 1;
-  Object.keys(rooms[roomCode]["sockets"]).forEach((id)=>{
+  Object.keys(rooms[roomCode]["sockets"]).forEach((id) => {
     console.log(id);
     console.log(`i ${i}`);
     rooms[roomCode]["sockets"][id]["playerNum"] = i;
@@ -119,32 +132,34 @@ function setupGame(roomCode){
 
 
 // DECK FUNCTIONS
-function shuffle(deck){
-  for (let i = 0; i < deck.length; ++i) {
-    let x = Math.floor(Math.random() * this.deck.length - 1);
-    [this.deck[i], this.deck[x]] = [this.deck[x], this.deck[i]];
+function shuffle(cardPool) {
+  for (let i = 0; i < cardPool.length; ++i) {
+    let x = Math.floor(Math.random() * cardPool.length - 1);
+    [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
   }
+  return cardPool
 }
 
-function deal(deck){
-  shuffle(deck)
+function deal(deck, roomCode) {
+  deck = shuffle(deck);
+  var playerCount = Object.keys(rooms[roomCode]["sockets"]).length;
   var playerNum = 1;
   var playerHands = [];
-  for (let i = 0; i < this.playerCount; ++i) {
+  for (let i = 0; i < playerCount; ++i) {
     playerHands.push([]);
   }
-  for (let j = 0; j < this.deck.length; ++j) {
-    this.deck[j].playerId = playerNum;
-    if (this.deck[j].uid.substring(2, 4) === 's07') {
-      if (this.startingPlayer === null) {
-        this.startingPlayer = playerNum;
-      } else if (this.startingPlayer > playerNum) {
-        this.startingPlayer = playerNum;
+  for (let j = 0; j < deck.length; ++j) {
+    deck[j].playerId = playerNum;
+    if (deck[j].uid.substring(2, 4) === 's07') {
+      if (startingPlayer === null) {
+        startingPlayer = playerNum;
+      } else if (startingPlayer > playerNum) {
+        startingPlayer = playerNum;
       }
     }
-    playerHands[playerNum - 1].push(this.deck[j]);
+    playerHands[playerNum - 1].push(deck[j]);
     ++playerNum;
-    if (playerNum === this.playerCount + 1) {
+    if (playerNum === playerCount + 1) {
       playerNum = 1;
     }
   }
@@ -152,10 +167,9 @@ function deal(deck){
   return playerHands;
 }
 
-function buildDeck(playerCount){
+function buildDeck(playerCount) {
   // < 6 => 1 deck
   // everyone needs 10+ cards
-
   let numDecks = Math.ceil(10 / (53 / playerCount));
   console.log(`numDecks: ${numDecks}`)
   let oneDeck = [];
@@ -163,42 +177,42 @@ function buildDeck(playerCount){
   let suits = ['spades', 'diamonds', 'clubs', 'hearts'];
   let cardValue;
   let joker = {
-      number: 0
-      , suit: "All"
-      , value: 50
-      , played: false
-      , playerId: 0
-      , uid: 'a00'
+    number: 0
+    , suit: "All"
+    , value: 50
+    , played: false
+    , playerId: 0
+    , uid: 'a00'
   }
 
   for (var i = 0; i < numDecks; ++i) {
-      oneDeck = [];
-      for (var j = 0; j < 4; ++j) {
-          for (var k = 1; k <= 13; ++k) {
-              if (k === 1) {
-                  cardValue = 15;
-              }
-              else if (k <= 10) {
-                  cardValue = k;
-              }
-              else {
-                  cardValue = 10;
-              }
-              let strK = '0' + k
-              oneDeck.push({
-                  number: k
-                  , suit: suits[j]
-                  , value: cardValue
-                  , played: false
-                  , playerId: 0
-                  , uid: `${i}${suits[j][0]}${strK.substring(strK.length - 2, strK.length)}`
-              })
-          }
+    oneDeck = [];
+    for (var j = 0; j < 4; ++j) {
+      for (var k = 1; k <= 13; ++k) {
+        if (k === 1) {
+          cardValue = 15;
+        }
+        else if (k <= 10) {
+          cardValue = k;
+        }
+        else {
+          cardValue = 10;
+        }
+        let strK = '0' + k
+        oneDeck.push({
+          number: k
+          , suit: suits[j]
+          , value: cardValue
+          , played: false
+          , playerId: 0
+          , uid: `${i}${suits[j][0]}${strK.substring(strK.length - 2, strK.length)}`
+        })
       }
-      joker.uid = i + joker.uid;
-      cardPool = [...cardPool, ...oneDeck, joker]
-      console.log(`cardPool: ${cardPool}`)
-      console.log(`playerId 52: ${cardPool[52].playerId}`)
+    }
+    joker.uid = i + joker.uid;
+    cardPool = [...cardPool, ...oneDeck, joker]
+    console.log(`cardPool: ${cardPool}`)
+    console.log(`playerId 52: ${cardPool[52].playerId}`)
   }
   return cardPool;
 }
