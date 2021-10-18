@@ -5,3 +5,16 @@ Unit Tests
     - Test Game Logic
 
 Look into removing socket id on disconnect.
+
+
+DLL Notes
+- add players to the list
+- deal player hands to their player number
+- move nodes around based on starting player? 
+- might just need to loop through.
+
+
+
+MVP
+- allow players to join a game room.
+- Host can start the game when players are in.
