@@ -3,10 +3,10 @@ import { SocketContext } from "../context/Socket";
 
 const Game = (props) => {
     const socket = useContext(SocketContext);
-    const [player, setPlayer] = useState({
-        name: ''
-        , playerId: ''
-    });
+    const [roomCode, setRoomCode] = useState('');
+    const [playerName, setPlayerName] = useState('');
+    const [playerNum, setPlayerNum] = useState(0);
+    const [host, setHost] = useState(false)
     const [hand, setHand] = useState([]);
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
@@ -17,12 +17,21 @@ const Game = (props) => {
 
 
     useEffect(() => {
-        socket.on('playerHands', hand => {
-            setPlayer({ name: socket.name, playerId: hand[0].playerId });
-            setHand(hand);
-        });
-
+        
     }, [])
+
+    //PLAYER INIT ROUTES
+    socket.on('playerInfo', (playerInfo) => {
+        setRoomCode(playerInfo.roomCode);
+        setPlayerName(playerInfo.name);
+        setPlayerNum(playerInfo.playerNum);
+    });
+
+    socket.on('setHost', ()=>{
+        setHost(true);
+    });
+
+    //END PLAYER INIT ROUTES
 
 
     //GAME LOGIC

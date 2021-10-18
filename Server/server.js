@@ -4,7 +4,7 @@ const server = app.listen(8000, () => console.log('The server is all fired up on
 const io = require('socket.io')(server, { cors: true });
 var activeSockets = [];
 
-// roomCode > Host,Deck,playerOrder > socket,name,playerNum
+// roomCode > hostSocket,deck,playerOrder > socket,name,playerNum
 var rooms = {};
 
 class Player{
@@ -95,9 +95,6 @@ io.on('connection', socket => {
 
 
   //GAME START ROUTES
-  socket.on('setFirstPlayer', startingPlayer => {
-  });
-
   socket.on('createGame', (roomCode) => {
     console.log('game created!!');
     setupGame(roomCode);
@@ -120,11 +117,7 @@ io.on('connection', socket => {
   })
 
   socket.on('dealCards', (deck, roomCode) => {
-    let playerHands = deal(deck, roomCode);
-    let sockets = Object.keys(rooms[roomCode]["sockets"]);
-    for (let i = 0; i < playerHands.length; ++i){
-      io.to(sockets[i]).emit('playerHand', playerHands[i]);
-    }
+    deal(deck, roomCode);
   });
 
   //END GAME ROUTES
@@ -133,7 +126,14 @@ io.on('connection', socket => {
 });
 //^END IO Connection Bracket
 
-
+function sendPlayerInfo(roomCode){
+  let runner = rooms[roomCode]['playerOrder'].head;
+  while(runner){
+    io.to(runner.socketId).emit('playerInfo',{roomCode:roomCode, name:runner.name, playerNum: runner.playerNum})
+    runner = runner.next;
+  }
+  io.to(rooms[roomCode]['hostSocket']).emit('setHost',null);
+}
 
 
 function getRooms() {
@@ -167,8 +167,10 @@ function setupGame(roomCode) {
     runner.playerNum = pn;
     ++pn;
   }
-  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
   io.to(roomCode).emit('createGame', null);
+  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
+  deal(deck, roomCode);
+  sendPlayerInfo(roomCode);
 }
 
 // DECK FUNCTIONS
@@ -203,8 +205,13 @@ function deal(deck, roomCode) {
       playerNum = 1;
     }
   }
-  console.log(playerHands)
-  return playerHands;
+  let runner = rooms[roomCode]['playerOrder'].head;
+  let i = 0;
+  while(runner){
+    io.to(runner.socketId).emit('playerHand', playerHands[i]);
+    runner = runner.next;
+    ++i;
+  }
 }
 
 function buildDeck(playerCount) {
