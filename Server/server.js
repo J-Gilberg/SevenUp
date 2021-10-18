@@ -50,7 +50,6 @@ class PlayerOrder{
   }
 }
 
-let playerOrder = new PlayerOrder();
 
 io.on('connection', socket => {
   // let keys = Object.keys(socket);
@@ -69,7 +68,8 @@ io.on('connection', socket => {
       //joins to room
       socket.join(newPlayer.roomCode);
       //creates player node in DLL
-      rooms[roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
+
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
       //sets player to host list.
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       //gets all players
@@ -79,8 +79,9 @@ io.on('connection', socket => {
 
     } else {
       socket.join(newPlayer.roomCode);
-      rooms[roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
+      rooms[newPlayer.roomCode]["playerOrder"] = new PlayerOrder();
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
       console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: true`);
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
       io.to(socket.id).emit('setPlayers', [newPlayer.name])
@@ -98,6 +99,7 @@ io.on('connection', socket => {
   socket.on('createGame', (roomCode) => {
     console.log('game created!!');
     setupGame(roomCode);
+
   });
 
   //GAME ROUTES
@@ -161,6 +163,7 @@ function getRooms() {
 
 function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
+  console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
   let pn = 1;
   while(runner){
@@ -264,27 +267,7 @@ function buildDeck(playerCount) {
   return cardPool;
 }
 
-function setPlayerOrder(hands) {
-  let starter = 0;
-  for (var i =0; i<hands.length; ++i){
-    players[i].playerHands.push(hands[i]);
-  }
 
-  for (var i =0; i<hands.length; ++i){
-    if (players[i].playerHands.includes('s07')) {
-      starter = i;
-      playerOrder.addBack(players[i]);
-    } else if (playerOrder){
-      playerOrder.addBack(players[i]);
-    }
-  }
-  
-  for (var i =0; i<starter; ++i) {
-    playerOrder.addBack(players[i]);
-  }
-
-  return playerOrder
-}
 //END DECK FUNCTIONS
 
 

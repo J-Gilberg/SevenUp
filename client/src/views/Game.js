@@ -122,13 +122,24 @@ const Game = (props) => {
                     })}
                 </div>
                 <div class='hearts'>
-
+                    Hearts
+                    {cardsPlayed.map((card, i) => {
+                        if (card.suits === 'diamonds' && card.number === 7) {
+                            return (
+                                <div>
+                                    <p>{min.diamonds !== 7 && min.diamonds}</p>
+                                    <p>7</p>
+                                    <p>{max.diamonds !== 7 && max.diamonds}</p>
+                                </div>
+                            )
+                        }
+                    })}
                 </div>
 
             </div>
 
             <div id="hand">
-                <h1>{yourTurn && `Its your Turn ${player.name}!!`}</h1>
+                <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <p>{errors}</p>
                 {hand.map((card, i) => {
                     return (
