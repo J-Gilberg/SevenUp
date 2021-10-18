@@ -4,12 +4,14 @@ const server = app.listen(8000, () => console.log('The server is all fired up on
 const io = require('socket.io')(server, { cors: true });
 var activeSockets = [];
 
-// roomCode > Host,Deck,Sockets > name,playerNum
+// roomCode > Host,Deck,playerOrder > socket,name,playerNum
 var rooms = {};
 
 class Player{
   constructor(playerInfo){
-    this.value = playerInfo;
+    this.socket = playerInfo.socketId;
+    this.name = playerInfo.name;
+    this.playerNum = playerInfo.playerNum;
     this.next = null;
     this.prev = null;
   }
@@ -23,7 +25,7 @@ class PlayerOrder{
 
   addBack(value){
     if(this.head === null){
-        let node = new Node(value);
+        let node = new Player(value);
         this.head = node;
         this.tail = node;
     }else{
@@ -31,11 +33,20 @@ class PlayerOrder{
         while(runner.next){
             runner = runner.next;
         }
-        let node = new Node(value);
+        let node = new Player(value);
         runner.next = node;
         node.prev = runner
         this.tail = node;
     }
+  }
+
+  count(){
+    let count = 0;
+    while(runner){
+      ++count;
+      runner = runner.next;
+    }
+    return count;
   }
 }
 
@@ -57,6 +68,8 @@ io.on('connection', socket => {
     if (getRooms().includes(newPlayer.roomCode)) {
       //joins to room
       socket.join(newPlayer.roomCode);
+      //creates player node in DLL
+      rooms[roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
       //sets player to host list.
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       //gets all players
@@ -66,6 +79,7 @@ io.on('connection', socket => {
 
     } else {
       socket.join(newPlayer.roomCode);
+      rooms[roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
       console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: true`);
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
@@ -88,11 +102,6 @@ io.on('connection', socket => {
     console.log('game created!!');
     setupGame(roomCode);
   });
-
-  socket.on('playerInfo', (socket, info) => {
-    rooms[info.roomCode]["sockets"][socket.id]["name"] = info.name;
-  });
-
 
   //GAME ROUTES
 
@@ -137,30 +146,28 @@ function getRooms() {
   return res;
 }
 
-function getSocketsInRoom(roomCode) {
-  const arr = Array.from(io.sockets.adapter.rooms).filter(room => !room[1].has(room[0]));
-  for (let i = 0; i < arr.length; ++i) {
-    if (arr[i][0] === roomCode) {
-      console.log(`getSocketsInRoom: ${arr[i][1].keys()}`)
-      return arr[i][1].keys();
-    }
-  }
-  console.log(`getSocketsInRoom roomCode does not exist`)
-  return false;
-}
+//// use this for validation later on?
+// function getSocketsInRoom(roomCode) {
+//   const arr = Array.from(io.sockets.adapter.rooms).filter(room => !room[1].has(room[0]));
+//   for (let i = 0; i < arr.length; ++i) {
+//     if (arr[i][0] === roomCode) {
+//       console.log(`getSocketsInRoom: ${arr[i][1].keys()}`)
+//       return arr[i][1].keys();
+//     }
+//   }
+//   console.log(`getSocketsInRoom roomCode does not exist`)
+//   return false;
+// } 
 
 function setupGame(roomCode) {
-  rooms[roomCode]["sockets"] = getSocketsInRoom(roomCode);
-  console.log(rooms[roomCode]["sockets"]);
-  let i = 1;
-  Object.keys(rooms[roomCode]["sockets"]).forEach((id) => {
-    console.log(id);
-    console.log(`i ${i}`);
-    rooms[roomCode]["sockets"][id]["playerNum"] = i;
-    io.to(id).emit('playerInfo', i);
-    ++i
-  });
-  rooms[roomCode]["deck"] = buildDeck(Object.keys(rooms[roomCode]["sockets"]).length);
+  // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
+  let runner = rooms[roomCode]["playerOrder"].head;
+  let pn = 1;
+  while(runner){
+    runner.playerNum = pn;
+    ++pn;
+  }
+  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
   io.to(roomCode).emit('createGame', null);
 }
 
