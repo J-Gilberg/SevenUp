@@ -13,6 +13,7 @@ class Player {
     this.playerNum = playerInfo.playerNum;
     this.next = null;
     this.prev = null;
+    this.count = 0;
   }
 }
 
@@ -37,15 +38,7 @@ class PlayerOrder {
       node.prev = runner
       this.tail = node;
     }
-  }
-
-  count() {
-    let count = 0;
-    while (runner) {
-      ++count;
-      runner = runner.next;
-    }
-    return count;
+    ++this.count;
   }
 }
 
@@ -63,7 +56,7 @@ io.on('connection', socket => {
   //GAME LOBBY ROUTES
   socket.on('newPlayer', newPlayer => {
     //checks if the room has been created.
-    if (getRooms().includes(newPlayer.roomCode)) {
+    if(getRooms().includes(newPlayer.roomCode)) {
       //joins to room
       socket.join(newPlayer.roomCode);
       //creates player node in DLL
@@ -127,7 +120,7 @@ io.on('connection', socket => {
 });
 //^END IO Connection Bracket
 
-module.exports = function sendPlayerInfo(roomCode) {
+function sendPlayerInfo(roomCode) {
   let runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
     io.to(runner.socketId).emit('playerInfo', { roomCode: roomCode, name: runner.name, playerNum: runner.playerNum })
@@ -137,7 +130,7 @@ module.exports = function sendPlayerInfo(roomCode) {
 }
 
 
-module.exports = function getRooms() {
+function getRooms() {
   const arr = Array.from(io.sockets.adapter.rooms);
   console.log(arr);
   const filtered = arr.filter(room => !room[1].has(room[0]));
@@ -160,7 +153,7 @@ module.exports = function getRooms() {
 //   return false;
 // } 
 
-module.exports = function setupGame(roomCode) {
+function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
   console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
@@ -172,13 +165,13 @@ module.exports = function setupGame(roomCode) {
     console.log(runner);
   }
   io.to(roomCode).emit('createGame', null);
-  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
+  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
   deal(deck, roomCode);
   sendPlayerInfo(roomCode);
 }
 
 // DECK FUNCTIONS
-module.exports = function shuffle(cardPool) {
+function shuffle(cardPool) {
   for (let i = 0; i < cardPool.length; ++i) {
     let x = Math.floor(Math.random() * cardPool.length - 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
@@ -186,9 +179,9 @@ module.exports = function shuffle(cardPool) {
   return cardPool
 }
 
-module.exports = function deal(deck, roomCode) {
+function deal(deck, roomCode) {
   deck = shuffle(deck);
-  var playerCount = Object.keys(rooms[roomCode]["sockets"]).length;
+  var playerCount = rooms[roomCode]["playerOrder"].count;
   var playerNum = 1;
   var playerHands = [];
   for (let i = 0; i < playerCount; ++i) {
@@ -218,7 +211,7 @@ module.exports = function deal(deck, roomCode) {
   }
 }
 
-module.exports = function buildDeck(playerCount) {
+function buildDeck(playerCount) {
   // < 6 => 1 deck
   // everyone needs 10+ cards
   let numDecks = Math.ceil(10 / (53 / playerCount));
