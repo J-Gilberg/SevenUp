@@ -18,3 +18,6 @@ DLL Notes
 MVP
 - allow players to join a game room.
 - Host can start the game when players are in.
+
+Starting Player:
+- need to add logic to determine starting player when there are more than one deck.
