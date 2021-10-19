@@ -23,8 +23,7 @@
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
+      "react-app" 
     ]
   },
   "browserslist": {
@@ -43,8 +42,5 @@
   "main": "index.js",
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "jest": "^27.3.1"
-  }
+  "license": "ISC"
 }
