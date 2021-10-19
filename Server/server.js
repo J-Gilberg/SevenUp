@@ -2,13 +2,12 @@ const express = require('express');
 const app = express();
 const server = app.listen(8000, () => console.log('The server is all fired up on port 8000'));
 const io = require('socket.io')(server, { cors: true });
-var activeSockets = [];
 
 // roomCode > hostSocket,deck,playerOrder > socket,name,playerNum
 var rooms = {};
 
-class Player{
-  constructor(playerInfo){
+class Player {
+  constructor(playerInfo) {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
     this.playerNum = playerInfo.playerNum;
@@ -17,32 +16,32 @@ class Player{
   }
 }
 
-class PlayerOrder{
-  constructor(){
+class PlayerOrder {
+  constructor() {
     this.head = null;
     this.tail = null;
   }
 
-  addBack(value){
-    if(this.head === null){
-        let node = new Player(value);
-        this.head = node;
-        this.tail = node;
-    }else{
-        let runner = this.head;
-        while(runner.next){
-            runner = runner.next;
-        }
-        let node = new Player(value);
-        runner.next = node;
-        node.prev = runner
-        this.tail = node;
+  addBack(value) {
+    if (this.head === null) {
+      let node = new Player(value);
+      this.head = node;
+      this.tail = node;
+    } else {
+      let runner = this.head;
+      while (runner.next) {
+        runner = runner.next;
+      }
+      let node = new Player(value);
+      runner.next = node;
+      node.prev = runner
+      this.tail = node;
     }
   }
 
-  count(){
+  count() {
     let count = 0;
-    while(runner){
+    while (runner) {
       ++count;
       runner = runner.next;
     }
@@ -69,7 +68,7 @@ io.on('connection', socket => {
       socket.join(newPlayer.roomCode);
       //creates player node in DLL
 
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
       //sets player to host list.
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       //gets all players
@@ -81,7 +80,7 @@ io.on('connection', socket => {
       socket.join(newPlayer.roomCode);
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
       rooms[newPlayer.roomCode]["playerOrder"] = new PlayerOrder();
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({socketId:socket.id,name:newPlayer.name,playerNum:0})
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
       console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: true`);
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
       io.to(socket.id).emit('setPlayers', [newPlayer.name])
@@ -104,14 +103,14 @@ io.on('connection', socket => {
 
   //GAME ROUTES
 
-  socket.on('cardPlayed', (card) => {
-    io.emit('cardPlayed', card);
+  socket.on('cardPlayed', (roomCode, card, playerNum) => {
+    io.to(roomCode).emit('cardPlayed', card);
     if (currentPlayersTurn + 1 < activeSockets.length) {
       ++currentPlayersTurn;
     } else {
       currentPlayersTurn = 0;
     }
-    activeSockets[currentPlayersTurn].emit('yourTurn');
+    io.to(nextPlayerSocket).emit('yourTurn');
   });
 
   socket.on('setFirstPlayer', startingPlayer => {
@@ -128,17 +127,17 @@ io.on('connection', socket => {
 });
 //^END IO Connection Bracket
 
-function sendPlayerInfo(roomCode){
+module.exports = function sendPlayerInfo(roomCode) {
   let runner = rooms[roomCode]['playerOrder'].head;
-  while(runner){
-    io.to(runner.socketId).emit('playerInfo',{roomCode:roomCode, name:runner.name, playerNum: runner.playerNum})
+  while (runner) {
+    io.to(runner.socketId).emit('playerInfo', { roomCode: roomCode, name: runner.name, playerNum: runner.playerNum })
     runner = runner.next;
   }
-  io.to(rooms[roomCode]['hostSocket']).emit('setHost',null);
+  io.to(rooms[roomCode]['hostSocket']).emit('setHost', null);
 }
 
 
-function getRooms() {
+module.exports = function getRooms() {
   const arr = Array.from(io.sockets.adapter.rooms);
   console.log(arr);
   const filtered = arr.filter(room => !room[1].has(room[0]));
@@ -161,14 +160,16 @@ function getRooms() {
 //   return false;
 // } 
 
-function setupGame(roomCode) {
+module.exports = function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
   console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
   let pn = 1;
-  while(runner){
+  while (runner) {
     runner.playerNum = pn;
+    runner = runner.next;
     ++pn;
+    console.log(runner);
   }
   io.to(roomCode).emit('createGame', null);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
@@ -177,7 +178,7 @@ function setupGame(roomCode) {
 }
 
 // DECK FUNCTIONS
-function shuffle(cardPool) {
+module.exports = function shuffle(cardPool) {
   for (let i = 0; i < cardPool.length; ++i) {
     let x = Math.floor(Math.random() * cardPool.length - 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
@@ -185,7 +186,7 @@ function shuffle(cardPool) {
   return cardPool
 }
 
-function deal(deck, roomCode) {
+module.exports = function deal(deck, roomCode) {
   deck = shuffle(deck);
   var playerCount = Object.keys(rooms[roomCode]["sockets"]).length;
   var playerNum = 1;
@@ -194,7 +195,7 @@ function deal(deck, roomCode) {
     playerHands.push([]);
   }
   for (let j = 0; j < deck.length; ++j) {
-    deck[j].playerId = playerNum;
+    deck[j].playerNum = playerNum;
     if (deck[j].uid.substring(2, 4) === 's07') {
       if (startingPlayer === null) {
         startingPlayer = playerNum;
@@ -210,14 +211,14 @@ function deal(deck, roomCode) {
   }
   let runner = rooms[roomCode]['playerOrder'].head;
   let i = 0;
-  while(runner){
+  while (runner) {
     io.to(runner.socketId).emit('playerHand', playerHands[i]);
     runner = runner.next;
     ++i;
   }
 }
 
-function buildDeck(playerCount) {
+module.exports = function buildDeck(playerCount) {
   // < 6 => 1 deck
   // everyone needs 10+ cards
   let numDecks = Math.ceil(10 / (53 / playerCount));
@@ -231,7 +232,7 @@ function buildDeck(playerCount) {
     , suit: "All"
     , value: 50
     , played: false
-    , playerId: 0
+    , playerNum: 0
     , uid: 'a00'
   }
 
@@ -254,7 +255,7 @@ function buildDeck(playerCount) {
           , suit: suits[j]
           , value: cardValue
           , played: false
-          , playerId: 0
+          , playerNum: 0
           , uid: `${i}${suits[j][0]}${strK.substring(strK.length - 2, strK.length)}`
         })
       }
@@ -262,12 +263,10 @@ function buildDeck(playerCount) {
     joker.uid = i + joker.uid;
     cardPool = [...cardPool, ...oneDeck, joker]
     console.log(`cardPool: ${cardPool}`)
-    console.log(`playerId 52: ${cardPool[52].playerId}`)
+    console.log(`playerNum 52: ${cardPool[52].playerNum}`)
   }
   return cardPool;
 }
-
-
 //END DECK FUNCTIONS
 
 
