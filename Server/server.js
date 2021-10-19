@@ -194,7 +194,7 @@ function shuffle(cardPool) {
 
 function deal(deck, roomCode) {
   deck = shuffle(deck);
-  var playerCount = rooms[roomCode]["playerOrder"].count();
+  var playerCount = rooms[roomCode]["playerOrder"].count;
   var playerNum = 1;
   var playerHands = [];
   
