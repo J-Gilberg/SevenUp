@@ -178,7 +178,7 @@ function setupGame(roomCode) {
     ++pn;
   }
   io.to(roomCode).emit('createGame', null);
-  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
+  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
   deal(rooms[roomCode]["deck"], roomCode);
   sendPlayerInfo(roomCode);
 }
