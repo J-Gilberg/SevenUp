@@ -5,7 +5,7 @@ import { Socket } from './service/Socket';
 import { BrowserRouter, Switch, Route } from 'react-router-dom';
 import { Dashboard } from './views/Dashboard';
 import Game from './views/Game';
-import GameLobby from './views/gameLobby';
+import GameLobby from './views/GameLobby';
 
 import './App.css';
 
