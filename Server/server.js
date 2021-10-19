@@ -11,6 +11,7 @@ class Player {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
     this.playerNum = playerInfo.playerNum;
+    this.hand = null;
     this.next = null;
     this.prev = null;
   }
@@ -20,6 +21,7 @@ class PlayerOrder {
   constructor() {
     this.head = null;
     this.tail = null;
+    this.count = 0;
   }
 
   addBack(value) {
@@ -37,15 +39,20 @@ class PlayerOrder {
       node.prev = runner
       this.tail = node;
     }
+    this.count++;
   }
 
-  count() {
-    let count = 0;
-    while (runner) {
-      ++count;
-      runner = runner.next;
-    }
-    return count;
+
+  moveHeadToBack(){
+    let temp = this.head;
+    this.head = temp.next;
+    head.prev = null;
+
+    this.tail.next = temp;
+    temp.prev = this.tail;
+    this.tail = this.tail.next;
+    this.tail.next = null;
+
   }
 }
 
@@ -121,6 +128,7 @@ io.on('connection', socket => {
     deal(deck, roomCode);
   });
 
+
   //END GAME ROUTES
 
 
@@ -172,15 +180,16 @@ module.exports = function setupGame(roomCode) {
     console.log(runner);
   }
   io.to(roomCode).emit('createGame', null);
-  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count());
-  deal(deck, roomCode);
+  rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
+  deal(rooms[roomCode]["deck"], roomCode);
   sendPlayerInfo(roomCode);
 }
 
 // DECK FUNCTIONS
-module.exports = function shuffle(cardPool) {
-  for (let i = 0; i < cardPool.length; ++i) {
-    let x = Math.floor(Math.random() * cardPool.length - 1);
+
+module.exports function shuffle(cardPool) {
+  for (let i = cardPool.length - 1; i >= 0; i--) {
+    let x = Math.floor(Math.random() * i + 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
   }
   return cardPool
@@ -188,20 +197,19 @@ module.exports = function shuffle(cardPool) {
 
 module.exports = function deal(deck, roomCode) {
   deck = shuffle(deck);
-  var playerCount = Object.keys(rooms[roomCode]["sockets"]).length;
+  var playerCount = rooms[roomCode]["playerOrder"].count;
   var playerNum = 1;
   var playerHands = [];
+  
   for (let i = 0; i < playerCount; ++i) {
     playerHands.push([]);
   }
   for (let j = 0; j < deck.length; ++j) {
     deck[j].playerNum = playerNum;
     if (deck[j].uid.substring(2, 4) === 's07') {
-      if (startingPlayer === null) {
-        startingPlayer = playerNum;
-      } else if (startingPlayer > playerNum) {
-        startingPlayer = playerNum;
-      }
+      
+        rooms[roomCode]["startingPlayer"] = playerNum;
+    
     }
     playerHands[playerNum - 1].push(deck[j]);
     ++playerNum;
@@ -213,8 +221,15 @@ module.exports = function deal(deck, roomCode) {
   let i = 0;
   while (runner) {
     io.to(runner.socketId).emit('playerHand', playerHands[i]);
+    runner.hand = playerHands[i];
     runner = runner.next;
     ++i;
+  }
+
+  i=0;
+  while (i < rooms[roomCode]["startingPlayer"]) {
+    rooms[roomCode]['playerOrder'].moveHeadToBack();
+    i++;
   }
 }
 
@@ -268,6 +283,12 @@ module.exports = function buildDeck(playerCount) {
   return cardPool;
 }
 //END DECK FUNCTIONS
+
+// Game Functionality
+
+
+
+
 
 
 
