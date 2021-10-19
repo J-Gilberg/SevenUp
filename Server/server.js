@@ -224,7 +224,7 @@ function deal(deck, roomCode) {
     ++i;
   }
 
-  let i=0;
+  i=0;
   while (i < rooms[roomCode]["startingPlayer"]) {
     rooms[roomCode]['playerOrder'].moveHeadToBack();
     i++;
@@ -285,7 +285,7 @@ function buildDeck(playerCount) {
 //END DECK FUNCTIONS
 
 // Game Functionality
-let runner = rooms[roomCode]["playerOrder"].head;
+
 
 
 
