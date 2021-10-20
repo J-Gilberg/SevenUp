@@ -21,6 +21,7 @@ class PlayerOrder {
   constructor() {
     this.head = null;
     this.tail = null;
+    this.count = 0;
   }
 
   addBack(value) {
@@ -48,7 +49,8 @@ io.on('connection', socket => {
   console.log(`Socket Id connected: ${socket.id}`);
   console.log(`number of sockets ${io.engine.clientsCount}`);
   io.emit('connection', null)
-
+  testSetup(socket);
+  console.log(rooms);
   //GENERAL ROUTES
 
   //END GENERAL ROUTES
@@ -56,7 +58,7 @@ io.on('connection', socket => {
   //GAME LOBBY ROUTES
   socket.on('newPlayer', newPlayer => {
     //checks if the room has been created.
-    if(getRooms().includes(newPlayer.roomCode)) {
+    if (getRooms().includes(newPlayer.roomCode)) {
       //joins to room
       socket.join(newPlayer.roomCode);
       //creates player node in DLL
@@ -166,7 +168,7 @@ function setupGame(roomCode) {
   }
   io.to(roomCode).emit('createGame', null);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
-  deal(deck, roomCode);
+  deal(rooms[roomCode]['deck'], roomCode);
   sendPlayerInfo(roomCode);
 }
 
@@ -259,6 +261,38 @@ function buildDeck(playerCount) {
     console.log(`playerNum 52: ${cardPool[52].playerNum}`)
   }
   return cardPool;
+}
+
+function testSetup(socket){
+  let roomCode = "cool";
+  var names = ["Justin","Tim","Shawn","Jordan"];
+  let count = 0;
+  if (getRooms().includes(roomCode)) {
+    count = rooms[roomCode]["playerOrder"].count;
+    //joins to room
+    socket.join(roomCode);
+    //creates player node in DLL
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count], playerNum: 0 })
+    //sets player to host list.
+    io.to(rooms[roomCode].hostSocket).emit('addPlayerToHostList', names[count]);
+    //gets all players
+    io.to(rooms[roomCode].hostSocket).emit('getPlayers');
+    io.to(socket.id).emit('newPlayer', { host: false, name: names[count], roomCode: roomCode });
+    io.to(socket.id).emit('testMoveToLobby', roomCode);
+
+  } else {
+    socket.join(roomCode);
+    rooms[roomCode] = { hostSocket: socket.id };
+    rooms[roomCode]["playerOrder"] = new PlayerOrder();
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count], playerNum: 0 })
+    io.to(socket.id).emit('newPlayer', { host: true, name: names[count], roomCode: roomCode });
+    io.to(socket.id).emit('setPlayers', [names[count]])
+    io.to(socket.id).emit('testMoveToLobby', roomCode);
+  }
+  
+  if(rooms[roomCode]["playerOrder"].count === 4){
+    setupGame(roomCode);
+  }
 }
 //END DECK FUNCTIONS
 

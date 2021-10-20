@@ -17,6 +17,10 @@ export const Dashboard = () => {
         });
     }, []);
 
+    socket.on('testMoveToLobby', (roomCode) => {
+        history.push(`/lobby/${roomCode}`); 
+    });
+
     const onSubmitHandler = (e) => {
         e.preventDefault();
         console.log('sent');
