@@ -294,8 +294,6 @@ function buildDeck(playerCount) {
 function game() {
   let runner = rooms[roomCode]["playerOrder"].head;
   let i=0;
-  let min={"spades": null, "hearts": null, "clubs": null, "diamonds": null}
-  let max={"spades": null, "hearts": null, "clubs": null, "diamonds": null}
   while (runner.hand.length > 0) {
     turn(runner);
     if (runner.next) {
@@ -323,18 +321,22 @@ function turn(player) {
           selectedCard.played = true;
           setCardsPlayed(...cardsPlayed, selectedCard);
           if(selectedCard.number == min[selectedCard.suit]) {
-              min[selectedCard.suit] = min[selectedCard.suit] - 1;
+            rooms[roomCode]["min"][selectedCard.suit] = rooms[roomCode]["min"][selectedCard.suit] - 1;
           } else {
-              max[selectedCard.suit] = max[selectedCard.suit] + 1;
+            rooms[roomCode]["max"][selectedCard.suit] = rooms[roomCode]["max"][selectedCard.suit] + 1;
           }
+          min = rooms[roomCode]["min"]
+          max = rooms[roomCode]["max"]
           socket.emit('cardPlayed', (cardsPlayed, min, max))
       } 
     } else if(selectedCard.uid.substring(2,4) === 's07' && cardsPlayed.length ==0) {
       selectedCard.played = true;
       setCardsPlayed(...cardsPlayed, selectedCard);
-      min.spades = 6;
-      max.spades = 8;
-      socket.emit('cardPlayed', (cardsPlayed))
+      rooms[roomCode]["min"][spades] = 6;
+      rooms[roomCode]["max"][spades] = 8;
+      min = rooms[roomCode]["min"]
+      max = rooms[roomCode]["max"]
+      socket.emit('cardPlayed', (cardsPlayed, min, max))
     } 
     socket.to(roomCode).emit("setCards", (cardsPlayed, min, max))
   });
