@@ -229,7 +229,7 @@ function deal(deck, roomCode) {
   let runner = rooms[roomCode]['playerOrder'].head;
   let i = 0;
   while (runner) {
-    io.to(runner.socketId).emit('playerHand', playerHands[i]);
+    io.to(runner.socket).emit('playerHand', playerHands[i]);
     runner.hand = playerHands[i];
     runner = runner.next;
     ++i;

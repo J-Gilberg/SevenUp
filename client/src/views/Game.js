@@ -1,6 +1,18 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { io } from 'socket.io-client';
 import { SocketContext } from "../context/Socket";
+import imageLoader from '../images/images';
+
+
+    // //IMPORT IMAGES
+    // function importAll(r) {
+    //     let cardImages = {};
+    //     r.keys().map(item => { cardImages[item.replace('./', '')] = r(item); });
+    //     return cardImages;
+    // }
+
+    // const cardImages = importAll(require.context('../images/cards', false, '/\.png/'));
+    // //END IMPORT IMAGES
+
 const Game = (props) => {
     const socket = useContext(SocketContext);
     const [roomCode, setRoomCode] = useState('');
@@ -13,12 +25,11 @@ const Game = (props) => {
     const [cardsPlayed, setCardsPlayed] = useState([]);
     const [min, setMin] = useState({ 'C': null, 'D': null, 'H': null, 'S': null })
     const [max, setMax] = useState({ 'C': null, 'D': null, 'H': null, 'S': null })
-
-
+    const [images, setImages] = useState(imageLoader())
 
 
     useEffect(() => {
-        
+
     }, [hand])
 
     //PLAYER INIT ROUTES
@@ -28,7 +39,7 @@ const Game = (props) => {
         setPlayerNum(playerInfo.playerNum);
     });
 
-    socket.on('setHost', ()=>{
+    socket.on('setHost', () => {
         setHost(true);
     });
 
@@ -42,12 +53,13 @@ const Game = (props) => {
 
     socket.on('yourTurn', (isTurn) => {
         setYourTurn(isTurn);
-        if (yourTurn){
+        if (yourTurn) {
             socket.emit("myTurn", roomCode);
         }
     });
 
-    socket.on('playerHand', hand=>{
+    socket.on('playerHand', hand => {
+        console.log(`Hand: ${hand}`);
         setHand(hand);
     });
 
@@ -55,7 +67,7 @@ const Game = (props) => {
         setCardsPlayed(cardsPlayed);
         setMin(min)
         setMax(max)
-      })
+    })
 
     //END GAME LOGIC
 
@@ -68,12 +80,12 @@ const Game = (props) => {
         let selectedCard = e.target.value
 
         if (cardsPlayed.length !== 0) {
-            if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0){
+            if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
                 socket.to(roomCode).emit("playedCard", selectedCard);
             } else {
                 setErrors('Play a valid card')
             }
-        } else if(selectedCard.uid.substring(2,4) === 's07' && cardsPlayed.length ==0){
+        } else if (selectedCard.uid.substring(2, 4) === 's07' && cardsPlayed.length == 0) {
             socket.to(roomCode).emit("playedCard", selectedCard);
         } else {
             setErrors('Play your 7 of Spades')
@@ -81,12 +93,12 @@ const Game = (props) => {
     }
 
     //END DISPLAY LOGIC
-
+    //
 
     return (
         <div>
             <div id="gameBoard">
-                <div class='spades'>
+                <div className='spades'>
                     Spades
                     {cardsPlayed.map((card, i) => {
                         if (card.suits === 'S' && card.number === 7) {
@@ -100,7 +112,7 @@ const Game = (props) => {
                         }
                     })}
                 </div>
-                <div class='clubs'>
+                <div className='clubs'>
                     Clubs
                     {cardsPlayed.map((card, i) => {
                         if (card.suits === 'C' && card.number === 7) {
@@ -114,7 +126,7 @@ const Game = (props) => {
                         }
                     })}
                 </div>
-                <div class='diamonds'>
+                <div className='diamonds'>
                     Diamonds
                     {cardsPlayed.map((card, i) => {
                         if (card.suits === 'D' && card.number === 7) {
@@ -128,7 +140,7 @@ const Game = (props) => {
                         }
                     })}
                 </div>
-                <div class='hearts'>
+                <div className='hearts'>
                     Hearts
                     {cardsPlayed.map((card, i) => {
                         if (card.suits === 'H' && card.number === 7) {
@@ -145,22 +157,21 @@ const Game = (props) => {
 
             </div>
 
-            <div id="hand">
+            <div className="hand">
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <p>{errors}</p>
-                {yourTurn ?
-                hand.map((card, i) => {
+                {yourTurn && hand.map((card, i) => {
                     return (
                         <div>
                             {!card.played && <button value={card} onClick={onClickHandler}>{card.suits} {card.number}</button>}
                         </div>
                     )
-                }) :
-                hand.map((card, i) => {
+                })
+                }
+                {!yourTurn && hand.map((card, i) => {
                     return (
                         <div>
-                            {!card.played &&  <img src="" alt={card.uid} />} 
-                            <img src="../img/" alt="" />
+                            {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
                         </div>
                     )
                 })
@@ -169,7 +180,7 @@ const Game = (props) => {
             </div>
         </div>
     )
-                
+
 }
 
 export default Game;
