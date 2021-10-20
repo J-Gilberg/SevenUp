@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
+import { io } from 'socket.io-client';
 import { SocketContext } from "../context/Socket";
 
 const Game = (props) => {
@@ -10,9 +11,10 @@ const Game = (props) => {
     const [hand, setHand] = useState([]);
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
-    var cardsPlayed = [];
-    var min = { 'clubs': 7, 'diamonds': 7, 'hearts': 7, 'spades': 7 }
-    var max = { 'clubs': 7, 'diamonds': 7, 'hearts': 7, 'spades': 7 }
+    const [cardsPlayed, setCardsPlayed] = useState([]);
+    const [min, setMin] = useState({"spades": null, "hearts": null, "clubs": null, "diamonds": null})
+    const [max, setMax] = useState({"spades": null, "hearts": null, "clubs": null, "diamonds": null})
+
 
 
 
@@ -41,11 +43,20 @@ const Game = (props) => {
 
     socket.on('yourTurn', (isTurn) => {
         setYourTurn(isTurn);
+        if (yourTurn){
+            socket.emit("myTurn", roomCode);
+        }
     });
 
     socket.on('playerHand', hand=>{
         setHand(hand);
     });
+
+    socket.on('setCards', (cardsPlayed, min, max) => {
+        setCardsPlayed(cardsPlayed);
+        setMin(min)
+        setMax(max)
+      })
 
     //END GAME LOGIC
 
@@ -55,21 +66,18 @@ const Game = (props) => {
     // 
     const onClickHandler = (e) => {
         e.preventDafault();
-        if (yourTurn) {
-            let selectedCard = e.target.value
-            if (cardsPlayed.length !== 0) {
-                setErrors('')
-                selectedCard.played = true;
-                setYourTurn(false);
-                socket.emit('cardPlayed', selectedCard)
-            } else if(selectedCard.uid.substring(2,4) === 's07'){
-                setErrors('')
-                selectedCard.played = true;
-                setYourTurn(false);
-                socket.emit('cardPlayed', selectedCard)
+        let selectedCard = e.target.value
+
+        if (cardsPlayed.length !== 0) {
+            if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0){
+                socket.to(roomCode).emit("playedCard", selectedCard);
             } else {
-                setErrors('Play your 7 of Spades')
+                setErrors('Play a valid card')
             }
+        } else if(selectedCard.uid.substring(2,4) === 's07' && cardsPlayed.length ==0){
+            socket.to(roomCode).emit("playedCard", selectedCard);
+        } else {
+            setErrors('Play your 7 of Spades')
         }
     }
 
@@ -141,14 +149,23 @@ const Game = (props) => {
             <div id="hand">
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <p>{errors}</p>
-                {hand.map((card, i) => {
+                {yourTurn ?
+                hand.map((card, i) => {
                     return (
                         <div>
                             {!card.played && <button value={card} onClick={onClickHandler}>{card.suits} {card.number}</button>}
                         </div>
                     )
-                })}
-                <button>Pass</button>
+                }) :
+                hand.map((card, i) => {
+                    return (
+                        <div>
+                            {!card.played && <p>{card.suits} {card.number}</p>}
+                        </div>
+                    )
+                })
+                }
+                {yourTurn ? <button>Pass</button> : ""}
             </div>
         </div>
     )

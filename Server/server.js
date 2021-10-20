@@ -130,6 +130,10 @@ io.on('connection', socket => {
     deal(deck, roomCode);
   });
 
+  socket.on("myTurn", (roomCode) => {
+    socket.to(roomCode).emit("yourTurn", false)
+  });
+
 
   //END GAME ROUTES
 
@@ -172,6 +176,8 @@ function getRooms() {
 
 function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
+  rooms[roomCode]["min"] = { 'clubs': null, 'diamonds': null, 'hearts': null, 'spades': null }
+  rooms[roomCode]["max"] = { 'clubs': null, 'diamonds': null, 'hearts': null, 'spades': null }
   console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
   let pn = 1;
@@ -189,7 +195,8 @@ function setupGame(roomCode) {
 
 // DECK FUNCTIONS
 
-module.exports = function shuffle(cardPool) {
+
+function shuffle(cardPool) {
   for (let i = cardPool.length - 1; i >= 0; i--) {
     let x = Math.floor(Math.random() * i + 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
@@ -319,8 +326,78 @@ function testSetup(socket){
 //END DECK FUNCTIONS
 
 // Game Functionality
+function game() {
+  let runner = rooms[roomCode]["playerOrder"].head;
+  let i=0;
+  while (runner.hand.length > 0) {
+    turn(runner);
+    if (runner.next) {
+      runner = runner.next;
+      i++;
+    } else {
+      runner = rooms[roomCode]["playerOrder"].head;
+      i=0;
+    }
+  }
+  
+}
+function turn(player) {
+  io.to(player.socket).emit('yourTurn', true);
+  
+  
+  // socket.on('cardPlayed', (cardsPlayed, min, max) => {
+  //   socket.to(roomCode).emit("setCards", (cardsPlayed, min, max));
+  // })
+  
+// ***** UPDATE FOR SERVER *****
+  socket.on('playedCard', selectedCard=>{
+    if (cardsPlayed.length !== 0) {
+      if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0){
+          selectedCard.played = true;
+          setCardsPlayed(...cardsPlayed, selectedCard);
+          if(selectedCard.number == min[selectedCard.suit]) {
+            rooms[roomCode]["min"][selectedCard.suit] = rooms[roomCode]["min"][selectedCard.suit] - 1;
+          } else {
+            rooms[roomCode]["max"][selectedCard.suit] = rooms[roomCode]["max"][selectedCard.suit] + 1;
+          }
+          min = rooms[roomCode]["min"]
+          max = rooms[roomCode]["max"]
+          socket.emit('cardPlayed', (cardsPlayed, min, max))
+      } 
+    } else if(selectedCard.uid.substring(2,4) === 's07' && cardsPlayed.length ==0) {
+      selectedCard.played = true;
+      setCardsPlayed(...cardsPlayed, selectedCard);
+      rooms[roomCode]["min"][spades] = 6;
+      rooms[roomCode]["max"][spades] = 8;
+      min = rooms[roomCode]["min"]
+      max = rooms[roomCode]["max"]
+      socket.emit('cardPlayed', (cardsPlayed, min, max))
+    } 
+    socket.to(roomCode).emit("setCards", (cardsPlayed, min, max))
+  });
 
+  
+}
 
+/*
+if (yourTurn) {
+  let selectedCard = e.target.value
+  if (cardsPlayed.length !== 0) {
+      setErrors('')
+      selectedCard.played = true;
+      cardsPlayed.push(selectedCard);
+      setYourTurn(false);
+      socket.emit('cardPlayed', (selectedCard, cardsPlayed))
+  } else if(selectedCard.uid.substring(2,4) === 's07'){
+      setErrors('')
+      selectedCard.played = true;
+      setYourTurn(false);
+      socket.emit('cardPlayed', selectedCard)
+  } else {
+      setErrors('Play your 7 of Spades')
+  }
+}
+*/
 
 
 
