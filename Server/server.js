@@ -14,6 +14,7 @@ class Player {
     this.hand = null;
     this.next = null;
     this.prev = null;
+    this.count = 0;
   }
 }
 
@@ -62,7 +63,8 @@ io.on('connection', socket => {
   console.log(`Socket Id connected: ${socket.id}`);
   console.log(`number of sockets ${io.engine.clientsCount}`);
   io.emit('connection', null)
-
+  testSetup(socket);
+  console.log(rooms);
   //GENERAL ROUTES
 
   //END GENERAL ROUTES
@@ -135,7 +137,7 @@ io.on('connection', socket => {
 });
 //^END IO Connection Bracket
 
-module.exports = function sendPlayerInfo(roomCode) {
+function sendPlayerInfo(roomCode) {
   let runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
     io.to(runner.socketId).emit('playerInfo', { roomCode: roomCode, name: runner.name, playerNum: runner.playerNum })
@@ -145,7 +147,7 @@ module.exports = function sendPlayerInfo(roomCode) {
 }
 
 
-module.exports = function getRooms() {
+function getRooms() {
   const arr = Array.from(io.sockets.adapter.rooms);
   console.log(arr);
   const filtered = arr.filter(room => !room[1].has(room[0]));
@@ -168,7 +170,7 @@ module.exports = function getRooms() {
 //   return false;
 // } 
 
-module.exports = function setupGame(roomCode) {
+function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
   console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
@@ -187,7 +189,7 @@ module.exports = function setupGame(roomCode) {
 
 // DECK FUNCTIONS
 
-module.exports function shuffle(cardPool) {
+module.exports = function shuffle(cardPool) {
   for (let i = cardPool.length - 1; i >= 0; i--) {
     let x = Math.floor(Math.random() * i + 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
@@ -195,7 +197,7 @@ module.exports function shuffle(cardPool) {
   return cardPool
 }
 
-module.exports = function deal(deck, roomCode) {
+function deal(deck, roomCode) {
   deck = shuffle(deck);
   var playerCount = rooms[roomCode]["playerOrder"].count;
   var playerNum = 1;
@@ -233,7 +235,7 @@ module.exports = function deal(deck, roomCode) {
   }
 }
 
-module.exports = function buildDeck(playerCount) {
+function buildDeck(playerCount) {
   // < 6 => 1 deck
   // everyone needs 10+ cards
   let numDecks = Math.ceil(10 / (53 / playerCount));
@@ -281,6 +283,38 @@ module.exports = function buildDeck(playerCount) {
     console.log(`playerNum 52: ${cardPool[52].playerNum}`)
   }
   return cardPool;
+}
+
+function testSetup(socket){
+  let roomCode = "cool";
+  var names = ["Justin","Tim","Shawn","Jordan"];
+  let count = 0;
+  if (getRooms().includes(roomCode)) {
+    count = rooms[roomCode]["playerOrder"].count;
+    //joins to room
+    socket.join(roomCode);
+    //creates player node in DLL
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count], playerNum: 0 })
+    //sets player to host list.
+    io.to(rooms[roomCode].hostSocket).emit('addPlayerToHostList', names[count]);
+    //gets all players
+    io.to(rooms[roomCode].hostSocket).emit('getPlayers');
+    io.to(socket.id).emit('newPlayer', { host: false, name: names[count], roomCode: roomCode });
+    io.to(socket.id).emit('testMoveToLobby', roomCode);
+
+  } else {
+    socket.join(roomCode);
+    rooms[roomCode] = { hostSocket: socket.id };
+    rooms[roomCode]["playerOrder"] = new PlayerOrder();
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count], playerNum: 0 })
+    io.to(socket.id).emit('newPlayer', { host: true, name: names[count], roomCode: roomCode });
+    io.to(socket.id).emit('setPlayers', [names[count]])
+    io.to(socket.id).emit('testMoveToLobby', roomCode);
+  }
+  
+  if(rooms[roomCode]["playerOrder"].count === 4){
+    setupGame(roomCode);
+  }
 }
 //END DECK FUNCTIONS
 
