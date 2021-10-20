@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { io } from 'socket.io-client';
 import { SocketContext } from "../context/Socket";
-
 const Game = (props) => {
     const socket = useContext(SocketContext);
     const [roomCode, setRoomCode] = useState('');
@@ -12,15 +11,15 @@ const Game = (props) => {
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
     const [cardsPlayed, setCardsPlayed] = useState([]);
-    const [min, setMin] = useState({"spades": null, "hearts": null, "clubs": null, "diamonds": null})
-    const [max, setMax] = useState({"spades": null, "hearts": null, "clubs": null, "diamonds": null})
+    const [min, setMin] = useState({ 'C': null, 'D': null, 'H': null, 'S': null })
+    const [max, setMax] = useState({ 'C': null, 'D': null, 'H': null, 'S': null })
 
 
 
 
     useEffect(() => {
         
-    }, [])
+    }, [hand])
 
     //PLAYER INIT ROUTES
     socket.on('playerInfo', (playerInfo) => {
@@ -90,12 +89,12 @@ const Game = (props) => {
                 <div class='spades'>
                     Spades
                     {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'spades' && card.number === 7) {
+                        if (card.suits === 'S' && card.number === 7) {
                             return (
                                 <div>
-                                    <p>{min.spades !== 7 && min.spades}</p>
+                                    <p>{min.S !== 7 && min.S}</p>
                                     <p>7</p>
-                                    <p>{max.spades !== 7 && max.spades}</p>
+                                    <p>{max.S !== 7 && max.S}</p>
                                 </div>
                             )
                         }
@@ -104,12 +103,12 @@ const Game = (props) => {
                 <div class='clubs'>
                     Clubs
                     {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'clubs' && card.number === 7) {
+                        if (card.suits === 'C' && card.number === 7) {
                             return (
                                 <div>
-                                    <p>{min.clubs !== 7 && min.clubs}</p>
+                                    <p>{min.C !== 7 && min.C}</p>
                                     <p>7</p>
-                                    <p>{max.clubs !== 7 && max.clubs}</p>
+                                    <p>{max.C !== 7 && max.C}</p>
                                 </div>
                             )
                         }
@@ -118,12 +117,12 @@ const Game = (props) => {
                 <div class='diamonds'>
                     Diamonds
                     {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'diamonds' && card.number === 7) {
+                        if (card.suits === 'D' && card.number === 7) {
                             return (
                                 <div>
-                                    <p>{min.diamonds !== 7 && min.diamonds}</p>
+                                    <p>{min.D !== 7 && min.D}</p>
                                     <p>7</p>
-                                    <p>{max.diamonds !== 7 && max.diamonds}</p>
+                                    <p>{max.D !== 7 && max.D}</p>
                                 </div>
                             )
                         }
@@ -132,12 +131,12 @@ const Game = (props) => {
                 <div class='hearts'>
                     Hearts
                     {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'diamonds' && card.number === 7) {
+                        if (card.suits === 'H' && card.number === 7) {
                             return (
                                 <div>
-                                    <p>{min.diamonds !== 7 && min.diamonds}</p>
+                                    <p>{min.H !== 7 && min.H}</p>
                                     <p>7</p>
-                                    <p>{max.diamonds !== 7 && max.diamonds}</p>
+                                    <p>{max.H !== 7 && max.H}</p>
                                 </div>
                             )
                         }
@@ -160,7 +159,8 @@ const Game = (props) => {
                 hand.map((card, i) => {
                     return (
                         <div>
-                            {!card.played && <p>{card.suits} {card.number}</p>}
+                            {!card.played &&  <img src="" alt={card.uid} />} 
+                            <img src="../img/" alt="" />
                         </div>
                     )
                 })
