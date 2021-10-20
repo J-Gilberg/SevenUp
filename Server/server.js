@@ -176,8 +176,8 @@ function getRooms() {
 
 function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
-  rooms[roomCode]["min"] = { 'clubs': null, 'diamonds': null, 'hearts': null, 'spades': null }
-  rooms[roomCode]["max"] = { 'clubs': null, 'diamonds': null, 'hearts': null, 'spades': null }
+  rooms[roomCode]["min"] = { 'C': null, 'D': null, 'H': null, 'S': null }
+  rooms[roomCode]["max"] = { 'C': null, 'D': null, 'H': null, 'S': null }
   console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
   let pn = 1;
@@ -215,7 +215,7 @@ function deal(deck, roomCode) {
   }
   for (let j = 0; j < deck.length; ++j) {
     deck[j].playerNum = playerNum;
-    if (deck[j].uid.substring(2, 4) === 's07') {
+    if (deck[j].uid.substring(2, 4) === '07S') {
       
         rooms[roomCode]["startingPlayer"] = playerNum;
     
@@ -229,7 +229,7 @@ function deal(deck, roomCode) {
   let runner = rooms[roomCode]['playerOrder'].head;
   let i = 0;
   while (runner) {
-    io.to(runner.socketId).emit('playerHand', playerHands[i]);
+    io.to(runner.socket).emit('playerHand', playerHands[i]);
     runner.hand = playerHands[i];
     runner = runner.next;
     ++i;
@@ -249,15 +249,15 @@ function buildDeck(playerCount) {
   console.log(`numDecks: ${numDecks}`)
   let oneDeck = [];
   let cardPool = [];
-  let suits = ['spades', 'diamonds', 'clubs', 'hearts'];
+  let suits = ['S', 'D', 'C', 'H'];
   let cardValue;
   let joker = {
     number: 0
-    , suit: "All"
+    , suit: "A"
     , value: 50
     , played: false
     , playerNum: 0
-    , uid: 'a00'
+    , uid: '00A'
   }
 
   for (var i = 0; i < numDecks; ++i) {
@@ -280,7 +280,7 @@ function buildDeck(playerCount) {
           , value: cardValue
           , played: false
           , playerNum: 0
-          , uid: `${i}${suits[j][0]}${strK.substring(strK.length - 2, strK.length)}`
+          , uid: `${i}${strK.substring(strK.length - 2, strK.length)}${suits[j]}`
         })
       }
     }
@@ -367,8 +367,8 @@ function turn(player) {
     } else if(selectedCard.uid.substring(2,4) === 's07' && cardsPlayed.length ==0) {
       selectedCard.played = true;
       setCardsPlayed(...cardsPlayed, selectedCard);
-      rooms[roomCode]["min"][spades] = 6;
-      rooms[roomCode]["max"][spades] = 8;
+      rooms[roomCode]["min"]['S'] = 6;
+      rooms[roomCode]["max"]['S'] = 8;
       min = rooms[roomCode]["min"]
       max = rooms[roomCode]["max"]
       socket.emit('cardPlayed', (cardsPlayed, min, max))

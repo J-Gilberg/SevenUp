@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^12.8.3",
     "axios": "^0.21.4",
@@ -23,7 +22,7 @@
   },
   "eslintConfig": {
     "extends": [
-      "react-app" 
+      "react-app"
     ]
   },
   "browserslist": {
