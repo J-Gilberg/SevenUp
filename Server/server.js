@@ -11,6 +11,7 @@ class Player {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
     this.playerNum = playerInfo.playerNum;
+    this.hand = null;
     this.next = null;
     this.prev = null;
     this.count = 0;
@@ -39,7 +40,20 @@ class PlayerOrder {
       node.prev = runner
       this.tail = node;
     }
-    ++this.count;
+    this.count++;
+  }
+
+
+  moveHeadToBack(){
+    let temp = this.head;
+    this.head = temp.next;
+    head.prev = null;
+
+    this.tail.next = temp;
+    temp.prev = this.tail;
+    this.tail = this.tail.next;
+    this.tail.next = null;
+
   }
 }
 
@@ -116,6 +130,7 @@ io.on('connection', socket => {
     deal(deck, roomCode);
   });
 
+
   //END GAME ROUTES
 
 
@@ -168,14 +183,15 @@ function setupGame(roomCode) {
   }
   io.to(roomCode).emit('createGame', null);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
-  deal(rooms[roomCode]['deck'], roomCode);
+  deal(rooms[roomCode]["deck"], roomCode);
   sendPlayerInfo(roomCode);
 }
 
 // DECK FUNCTIONS
-function shuffle(cardPool) {
-  for (let i = 0; i < cardPool.length; ++i) {
-    let x = Math.floor(Math.random() * cardPool.length - 1);
+
+module.exports = function shuffle(cardPool) {
+  for (let i = cardPool.length - 1; i >= 0; i--) {
+    let x = Math.floor(Math.random() * i + 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
   }
   return cardPool
@@ -186,17 +202,16 @@ function deal(deck, roomCode) {
   var playerCount = rooms[roomCode]["playerOrder"].count;
   var playerNum = 1;
   var playerHands = [];
+  
   for (let i = 0; i < playerCount; ++i) {
     playerHands.push([]);
   }
   for (let j = 0; j < deck.length; ++j) {
     deck[j].playerNum = playerNum;
     if (deck[j].uid.substring(2, 4) === 's07') {
-      if (startingPlayer === null) {
-        startingPlayer = playerNum;
-      } else if (startingPlayer > playerNum) {
-        startingPlayer = playerNum;
-      }
+      
+        rooms[roomCode]["startingPlayer"] = playerNum;
+    
     }
     playerHands[playerNum - 1].push(deck[j]);
     ++playerNum;
@@ -208,8 +223,15 @@ function deal(deck, roomCode) {
   let i = 0;
   while (runner) {
     io.to(runner.socketId).emit('playerHand', playerHands[i]);
+    runner.hand = playerHands[i];
     runner = runner.next;
     ++i;
+  }
+
+  i=0;
+  while (i < rooms[roomCode]["startingPlayer"]) {
+    rooms[roomCode]['playerOrder'].moveHeadToBack();
+    i++;
   }
 }
 
@@ -295,6 +317,12 @@ function testSetup(socket){
   }
 }
 //END DECK FUNCTIONS
+
+// Game Functionality
+
+
+
+
 
 
 
