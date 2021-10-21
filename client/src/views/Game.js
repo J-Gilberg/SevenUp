@@ -114,7 +114,7 @@ const Game = (props) => {
     // display on 1st game board by default, if not, move on to next available/possible board 
     // 
     const onClickHandler = (e) => {
-        e.preventDafault();
+        e.preventDefault();
         let selectedCard = e.target.value
 
         if (cardsPlayed.length !== 0) {
@@ -123,7 +123,7 @@ const Game = (props) => {
             } else {
                 setErrors('Play a valid card')
             }
-        } else if (selectedCard.uid.substring(2, 4) === 's07' && cardsPlayed.length == 0) {
+        } else if (selectedCard.uid.substring(2, 4) === '07S' && cardsPlayed.length == 0) {
             socket.to(roomCode).emit("playedCard", selectedCard);
         } else {
             setErrors('Play your 7 of Spades')
@@ -212,7 +212,7 @@ const Game = (props) => {
                 {yourTurn && hand.map((card, i) => {
                     return (
                         <div style={getHandStyles(i)}>
-                            {!card.played && <button value={card} onClick={onClickHandler}>{card.suits} {card.number}</button>}
+                            {!card.played && <img value={card} onClick={onClickHandler} src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)}/>}
                         </div>
                     )
                 })
@@ -220,7 +220,7 @@ const Game = (props) => {
                 {!yourTurn && hand.map((card, i) => {
                     return (
                         <div style={getHandStyles(i)}>
-                            {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
+                            {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)}/>}
                         </div>
                     )
                 })
