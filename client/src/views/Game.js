@@ -132,9 +132,11 @@ const Game = (props) => {
 
     const getHandStyles = (i) =>{
         return {
-            position: 'relative'
+            position: 'absolute'
             ,zindex: i
-            ,left: -(i*40)+'px'
+            ,left: (i*30)+'px'
+            ,height: '120px'
+            ,width: '80px'
         }
     }
 
@@ -205,6 +207,7 @@ const Game = (props) => {
             <div className="hand">
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <p>{errors}</p>
+                
                 <div className='cardInHandPostion' >
                 {yourTurn && hand.map((card, i) => {
                     return (
