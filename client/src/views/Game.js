@@ -3,15 +3,15 @@ import { SocketContext } from "../context/Socket";
 import imageLoader from '../images/images';
 
 
-    // //IMPORT IMAGES
-    // function importAll(r) {
-    //     let cardImages = {};
-    //     r.keys().map(item => { cardImages[item.replace('./', '')] = r(item); });
-    //     return cardImages;
-    // }
+// //IMPORT IMAGES
+// function importAll(r) {
+//     let cardImages = {};
+//     r.keys().map(item => { cardImages[item.replace('./', '')] = r(item); });
+//     return cardImages;
+// }
 
-    // const cardImages = importAll(require.context('../images/cards', false, '/\.png/'));
-    // //END IMPORT IMAGES
+// const cardImages = importAll(require.context('../images/cards', false, '/\.png/'));
+// //END IMPORT IMAGES
 
 const Game = (props) => {
     const socket = useContext(SocketContext);
@@ -45,7 +45,6 @@ const Game = (props) => {
 
     //END PLAYER INIT ROUTES
 
-
     //GAME LOGIC
     socket.on('cardPlayed', card => {
         cardsPlayed.push(card);
@@ -59,8 +58,7 @@ const Game = (props) => {
     });
 
     socket.on('playerHand', hand => {
-        console.log(`Hand: ${hand}`);
-        setHand(hand);
+        setHand(sortHand(hand));
     });
 
     socket.on('setCards', (cardsPlayed, min, max) => {
@@ -68,8 +66,48 @@ const Game = (props) => {
         setMin(min)
         setMax(max)
     })
-
     //END GAME LOGIC
+
+    //DISPLAY FUNCTIONS
+    const sortHand = (hand) => {
+        let cardSuits = { 'A': [], 'S': [], 'D': [],'C': [], 'H': []}
+        let output = [];
+        hand.forEach(card => {
+            cardSuits[card.suit].push(card);
+        });
+        Object.keys(cardSuits).forEach((suit) => {
+            let sorted = false;
+            let i = 0;
+            let changes = false;
+            if (cardSuits[suit].length <= 0) {
+                sorted = true;
+            }else if(cardSuits[suit].length <= 1){
+                output.push(cardSuits[suit][i]);
+                sorted = true;
+            }
+            while (!sorted) {
+                console.log(cardSuits[suit][i].number);
+                if (cardSuits[suit][i].number < cardSuits[suit][i + 1].number) {
+                    [cardSuits[suit][i], cardSuits[suit][i + 1]] = [cardSuits[suit][i + 1], cardSuits[suit][i]];
+                    changes = true;
+                }
+                if(i+1 < cardSuits[suit].length-1){
+                    ++i
+                }else if(!changes){
+                    sorted = true;
+                }else{
+                    changes = false;
+                    i = 0;
+                }
+            }
+            console.log(cardSuits[suit]);
+            output = [...output,...cardSuits[suit]];
+            
+        });
+        console.log(output);
+        return output;
+    }
+    //END DISPLAY FUNCTIONS
 
     //DISPLAY LOGIC
     // onvlcik for card, set card in hand and overall card pool to played
@@ -92,11 +130,19 @@ const Game = (props) => {
         }
     }
 
+    const getHandStyles = (i) =>{
+        return {
+            position: 'relative'
+            ,zindex: i
+            ,left: -(i*40)+'px'
+        }
+    }
+
     //END DISPLAY LOGIC
     //
 
     return (
-        <div>
+        <div className='gameContainer'>
             <div id="gameBoard">
                 <div className='spades'>
                     Spades
@@ -154,15 +200,15 @@ const Game = (props) => {
                         }
                     })}
                 </div>
-
             </div>
 
             <div className="hand">
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <p>{errors}</p>
+                <div className='cardInHandPostion' >
                 {yourTurn && hand.map((card, i) => {
                     return (
-                        <div>
+                        <div style={getHandStyles(i)}>
                             {!card.played && <button value={card} onClick={onClickHandler}>{card.suits} {card.number}</button>}
                         </div>
                     )
@@ -170,12 +216,13 @@ const Game = (props) => {
                 }
                 {!yourTurn && hand.map((card, i) => {
                     return (
-                        <div>
+                        <div style={getHandStyles(i)}>
                             {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
                         </div>
                     )
                 })
                 }
+                </div>
                 {yourTurn ? <button>Pass</button> : ""}
             </div>
         </div>
@@ -184,3 +231,6 @@ const Game = (props) => {
 }
 
 export default Game;
+
+
+//

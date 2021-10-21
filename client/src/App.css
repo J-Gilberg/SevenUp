@@ -9,3 +9,35 @@
 *{
   background-color: grey;
 }
+
+.hand{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  height: 30%;
+  width: 80%;
+}
+
+.gameBoard{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60%;
+
+}
+
+.gameContainer{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.cardInHandPostion{
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 50%;
+}  
