@@ -29,12 +29,13 @@ const Game = (props) => {
     const [images, setImages] = useState(imageLoader())
 
 
-    useEffect(() => {
+    // useEffect(() => {
 
-    }, [hand])
+    // }, [hand])
 
     //PLAYER INIT ROUTES
     socket.on('playerInfo', (playerInfo) => {
+        console.log(`roomCode ${playerInfo.roomCode}`)
         setRoomCode(playerInfo.roomCode);
         setPlayerName(playerInfo.name);
         setPlayerNum(playerInfo.playerNum);
@@ -47,9 +48,9 @@ const Game = (props) => {
     //END PLAYER INIT ROUTES
 
     //GAME LOGIC
-    socket.on('cardPlayed', card => {
-        cardsPlayed.push(card);
-    });
+    // socket.on('cardPlayed', card => {
+    //     cardsPlayed.push(card);
+    // });
 
     socket.on('yourTurn', (isTurn) => {
         setYourTurn(isTurn);
@@ -120,12 +121,14 @@ const Game = (props) => {
         console.log(selectedCard);
         if (cardsPlayed.length !== 0) {
             if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
-                socket.emit("playedCard", selectedCard);
+                console.log(`roomCode ${roomCode}`);
+                socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
             } else {
                 setErrors('Play a valid card');
             }
         } else if (selectedCard.uid.substring(1, 4) === '07S' && cardsPlayed.length == 0) {
-            socket.emit("playedCard", selectedCard);
+            console.log(`roomCode ${roomCode}`);
+            socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
         } else {
             setErrors('Play your 7 of Spades');
         }

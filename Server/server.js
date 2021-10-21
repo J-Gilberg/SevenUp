@@ -73,18 +73,11 @@ io.on('connection', socket => {
 
   //GAME LOBBY ROUTES
   socket.on('newPlayer', newPlayer => {
-    //checks if the room has been created.
     if (getRooms().includes(newPlayer.roomCode)) {
-      //joins to room
       socket.join(newPlayer.roomCode);
-      //creates player node in DLL
-
       rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
-      //sets player to host list.
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
-      //gets all players
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('getPlayers');
-      console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: false`);
       io.to(socket.id).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
 
     } else {
@@ -92,7 +85,6 @@ io.on('connection', socket => {
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
       rooms[newPlayer.roomCode]["playerOrder"] = new PlayerOrder();
       rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
-      console.log(`room: ${newPlayer.roomCode}, name: ${newPlayer.name} , isHost: true`);
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
       io.to(socket.id).emit('setPlayers', [newPlayer.name])
     }
@@ -129,6 +121,8 @@ io.on('connection', socket => {
   })
 
   socket.on('dealCards', (deck, roomCode) => {
+    console.log(`Deal Cards Deck: ${deck}`)
+    console.log(`Deal Cards RC: ${roomCode}`)
     deal(deck, roomCode);
   });
 
@@ -136,43 +130,48 @@ io.on('connection', socket => {
     socket.to(roomCode).emit("yourTurn", false)
   });
 
-  socket.on('playedCard', selectedCard => {
-    if (cardsPlayed.length !== 0) {
+  socket.on('playedCard', (obj) => {
+    let roomCode = obj.roomCode;
+    let selectedCard = obj.selectedCard;
+    if (!("cardsPlayed" in rooms[roomCode])) {
+      rooms[roomCode]["cardsPlayed"] = [];
+    }
+    if (rooms[roomCode]["cardsPlayed"].length !== 0) {
       if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
+        console.log('card was played');
         selectedCard.played = true;
-        setCardsPlayed(...cardsPlayed, selectedCard);
+        rooms[roomCode]["cardsPlayed"].push(selectedCard);
         if (selectedCard.number == min[selectedCard.suit]) {
           rooms[roomCode]["min"][selectedCard.suit] = rooms[roomCode]["min"][selectedCard.suit] - 1;
         } else {
           rooms[roomCode]["max"][selectedCard.suit] = rooms[roomCode]["max"][selectedCard.suit] + 1;
         }
-        min = rooms[roomCode]["min"]
-        max = rooms[roomCode]["max"]
-        socket.emit('cardPlayed', (cardsPlayed, min, max))
+        // socket.emit('cardPlayed', {'cardsPlayed':rooms[roomCode]["cardsPlayed"], 'min':rooms[roomCode]["min"], 'max':rooms[roomCode]["max"]})
       }
-    } else if (selectedCard.uid.substring(2, 4) === 's07' && cardsPlayed.length == 0) {
+    } else if (selectedCard.uid.substring(1, 4) === 's07') {
+      console.log('seven of spades was played');
       selectedCard.played = true;
-      setCardsPlayed(...cardsPlayed, selectedCard);
+      rooms[roomCode]["cardsPlayed"].push(selectedCard);
       rooms[roomCode]["min"]['S'] = 6;
       rooms[roomCode]["max"]['S'] = 8;
-      min = rooms[roomCode]["min"]
-      max = rooms[roomCode]["max"]
-      socket.emit('cardPlayed', (cardsPlayed, min, max))
     }
-    socket.to(roomCode).emit("setCards", (cardsPlayed, min, max))
+    socket.to(roomCode).emit("setCards", {
+      'cardsPlayed': rooms[roomCode]["cardsPlayed"]
+      , 'min': rooms[roomCode]["min"]['S'] = 6
+      , 'max': rooms[roomCode]["max"]['S'] = 8
+    });
     rooms[roomCode]['playerOrder'].moveHeadToBack();
     io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
   });
   //END GAME ROUTES
-
-
 });
 //^END IO Connection Bracket
 
 function sendPlayerInfo(roomCode) {
+  console.log('sending Player Info');
   let runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
-    io.to(runner.socketId).emit('playerInfo', { roomCode: roomCode, name: runner.name, playerNum: runner.playerNum })
+    io.to(runner.socket).emit('playerInfo', { roomCode: roomCode, name: runner.name, playerNum: runner.playerNum })
     runner = runner.next;
   }
   io.to(rooms[roomCode]['hostSocket']).emit('setHost', null);
@@ -181,11 +180,8 @@ function sendPlayerInfo(roomCode) {
 
 function getRooms() {
   const arr = Array.from(io.sockets.adapter.rooms);
-  console.log(arr);
   const filtered = arr.filter(room => !room[1].has(room[0]));
-  console.log(`filtered ${filtered}`);
   const res = filtered.map(i => i[0]);
-  console.log(res);
   return res;
 }
 
@@ -204,9 +200,9 @@ function getRooms() {
 
 function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
+  console.log('setting up game');
   rooms[roomCode]["min"] = { 'C': null, 'D': null, 'H': null, 'S': null }
   rooms[roomCode]["max"] = { 'C': null, 'D': null, 'H': null, 'S': null }
-  console.log(rooms[roomCode]["playerOrder"]);
   let runner = rooms[roomCode]["playerOrder"].head;
   let pn = 1;
   while (runner) {
@@ -226,6 +222,7 @@ function setupGame(roomCode) {
 
 
 function shuffle(cardPool) {
+  console.log('shuffling');
   for (let i = cardPool.length - 1; i >= 0; i--) {
     let x = Math.floor(Math.random() * i + 1);
     [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
@@ -235,6 +232,7 @@ function shuffle(cardPool) {
 
 function deal(deck, roomCode) {
   deck = shuffle(deck);
+  console.log('dealing');
   var playerCount = rooms[roomCode]["playerOrder"].count;
   var playerNum = 1;
   var playerHands = [];
@@ -270,10 +268,10 @@ function deal(deck, roomCode) {
 }
 
 function buildDeck(playerCount) {
+  console.log('building deck');
   // < 6 => 1 deck
   // everyone needs 10+ cards
   let numDecks = Math.ceil(10 / (53 / playerCount));
-  console.log(`numDecks: ${numDecks}`)
   let oneDeck = [];
   let cardPool = [];
   let suits = ['S', 'D', 'C', 'H'];
@@ -313,27 +311,11 @@ function buildDeck(playerCount) {
     }
     joker.uid = i + joker.uid;
     cardPool = [...cardPool, ...oneDeck, joker]
-    console.log(`cardPool: ${cardPool}`)
-    console.log(`playerNum 52: ${cardPool[52].playerNum}`)
   }
   return cardPool;
 }
 //END DECK FUNCTIONS
 
-// Game Functionality
-
-function turn(player) {
-  io.to(player.socket).emit('yourTurn', true);
-
-
-  // socket.on('cardPlayed', (cardsPlayed, min, max) => {
-  //   socket.to(roomCode).emit("setCards", (cardsPlayed, min, max));
-  // })
-
-  // ***** UPDATE FOR SERVER *****
-
-  
-}
 
 //TEST SETUP!!
 function testSetup(socket) {
@@ -367,28 +349,6 @@ function testSetup(socket) {
   }
 }
 //END TEST SETUP!!
-
-
-
-/*
-if (yourTurn) {
-  let selectedCard = e.target.value
-  if (cardsPlayed.length !== 0) {
-      setErrors('')
-      selectedCard.played = true;
-      cardsPlayed.push(selectedCard);
-      setYourTurn(false);
-      socket.emit('cardPlayed', (selectedCard, cardsPlayed))
-  } else if(selectedCard.uid.substring(2,4) === 's07'){
-      setErrors('')
-      selectedCard.played = true;
-      setYourTurn(false);
-      socket.emit('cardPlayed', selectedCard)
-  } else {
-      setErrors('Play your 7 of Spades')
-  }
-}
-*/
 
 
 
