@@ -47,7 +47,7 @@ class PlayerOrder {
   moveHeadToBack() {
     let temp = this.head;
     this.head = temp.next;
-    head.prev = null;
+    this.head.prev = null;
 
     this.tail.next = temp;
     temp.prev = this.tail;
@@ -244,7 +244,7 @@ function deal(deck, roomCode) {
   }
   for (let j = 0; j < deck.length; ++j) {
     deck[j].playerNum = playerNum;
-    if (deck[j].uid.substring(2, 4) === '07S') {
+    if (deck[j].uid.substring(1, 4) === '07S') {
       rooms[roomCode]["startingPlayer"] = playerNum;
     }
     playerHands[playerNum - 1].push(deck[j]);
@@ -262,7 +262,7 @@ function deal(deck, roomCode) {
     runner = runner.next;
     ++i;
   }
-  i = 0;
+  i = 1;
   while (i < rooms[roomCode]["startingPlayer"]) {
     rooms[roomCode]['playerOrder'].moveHeadToBack();
     i++;

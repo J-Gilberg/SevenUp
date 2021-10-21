@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
+import { Socket } from 'socket.io';
 import { SocketContext } from "../context/Socket";
 import imageLoader from '../images/images';
 
@@ -57,7 +58,7 @@ const Game = (props) => {
         }
     });
 
-    socket.on('playerHand', hand => {
+    socket.off('playerHand').on('playerHand', hand => {
         setHand(sortHand(hand));
     });
 
@@ -70,7 +71,7 @@ const Game = (props) => {
 
     //DISPLAY FUNCTIONS
     const sortHand = (hand) => {
-        let cardSuits = { 'A': [], 'S': [], 'D': [],'C': [], 'H': []}
+        let cardSuits = { 'A': [], 'S': [], 'D': [], 'C': [], 'H': [] }
         let output = [];
         hand.forEach(card => {
             cardSuits[card.suit].push(card);
@@ -81,28 +82,28 @@ const Game = (props) => {
             let changes = false;
             if (cardSuits[suit].length <= 0) {
                 sorted = true;
-            }else if(cardSuits[suit].length <= 1){
-                output.push(cardSuits[suit][i]);
+            } else if (cardSuits[suit].length == 1) {
                 sorted = true;
             }
             while (!sorted) {
-                console.log(cardSuits[suit][i].number);
                 if (cardSuits[suit][i].number < cardSuits[suit][i + 1].number) {
                     [cardSuits[suit][i], cardSuits[suit][i + 1]] = [cardSuits[suit][i + 1], cardSuits[suit][i]];
                     changes = true;
                 }
-                if(i+1 < cardSuits[suit].length-1){
+                if (i + 1 < cardSuits[suit].length - 1) {
                     ++i
-                }else if(!changes){
+                } else if (!changes) {
                     sorted = true;
-                }else{
+                } else {
                     changes = false;
                     i = 0;
                 }
             }
             console.log(cardSuits[suit]);
-            output = [...output,...cardSuits[suit]];
-            
+            if (cardSuits[suit].length > 0) {
+                console.log(cardSuits[suit]);
+                output = [...output, ...cardSuits[suit]];
+            }
         });
         console.log(output);
         return output;
@@ -113,30 +114,30 @@ const Game = (props) => {
     // onvlcik for card, set card in hand and overall card pool to played
     // display on 1st game board by default, if not, move on to next available/possible board 
     // 
-    const onClickHandler = (e) => {
-        e.preventDefault();
-        let selectedCard = e.target.value
-
+    const onClickHandler = (selectedCard) => {
+        // e.preventDefault();
+        // let selectedCard = e.target.value;
+        console.log(selectedCard);
         if (cardsPlayed.length !== 0) {
             if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
-                socket.to(roomCode).emit("playedCard", selectedCard);
+                socket.emit("playedCard", selectedCard);
             } else {
-                setErrors('Play a valid card')
+                setErrors('Play a valid card');
             }
-        } else if (selectedCard.uid.substring(2, 4) === '07S' && cardsPlayed.length == 0) {
-            socket.to(roomCode).emit("playedCard", selectedCard);
+        } else if (selectedCard.uid.substring(1, 4) === '07S' && cardsPlayed.length == 0) {
+            socket.emit("playedCard", selectedCard);
         } else {
-            setErrors('Play your 7 of Spades')
+            setErrors('Play your 7 of Spades');
         }
     }
 
-    const getHandStyles = (i) =>{
+    const getHandStyles = (i) => {
         return {
             position: 'absolute'
-            ,zindex: i
-            ,left: (i*30)+'px'
-            ,height: '120px'
-            ,width: '80px'
+            , zindex: i
+            , left: (i * 30) + 'px'
+            , height: '120px'
+            , width: '80px'
         }
     }
 
@@ -207,24 +208,24 @@ const Game = (props) => {
             <div className="hand">
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <p>{errors}</p>
-                
+
                 <div className='cardInHandPostion' >
-                {yourTurn && hand.map((card, i) => {
-                    return (
-                        <div style={getHandStyles(i)}>
-                            {!card.played && <img value={card} onClick={onClickHandler} src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)}/>}
-                        </div>
-                    )
-                })
-                }
-                {!yourTurn && hand.map((card, i) => {
-                    return (
-                        <div style={getHandStyles(i)}>
-                            {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)}/>}
-                        </div>
-                    )
-                })
-                }
+                    {yourTurn && hand.map((card, i) => {
+                        return (
+                            <div style={getHandStyles(i)}>
+                                {!card.played && <img onClick={() => onClickHandler(card)} src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
+                            </div>
+                        )
+                    })
+                    }
+                    {!yourTurn && hand.map((card, i) => {
+                        return (
+                            <div style={getHandStyles(i)}>
+                                {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
+                            </div>
+                        )
+                    })
+                    }
                 </div>
                 {yourTurn ? <button>Pass</button> : ""}
             </div>
