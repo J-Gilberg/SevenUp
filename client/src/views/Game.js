@@ -212,7 +212,7 @@ const Game = (props) => {
                 {yourTurn && hand.map((card, i) => {
                     return (
                         <div style={getHandStyles(i)}>
-                            {!card.played && <button value={card} onClick={onClickHandler}>{card.suits} {card.number}</button>}
+                            {!card.played && <img value={card} onClick={onClickHandler} src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)}/>}
                         </div>
                     )
                 })
@@ -220,7 +220,7 @@ const Game = (props) => {
                 {!yourTurn && hand.map((card, i) => {
                     return (
                         <div style={getHandStyles(i)}>
-                            {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
+                            {!card.played && <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)}/>}
                         </div>
                     )
                 })
