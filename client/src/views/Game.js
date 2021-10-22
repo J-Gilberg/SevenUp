@@ -19,7 +19,8 @@ const Game = (props) => {
     const [roomCode, setRoomCode] = useState('');
     const [playerName, setPlayerName] = useState('');
     const [playerNum, setPlayerNum] = useState(0);
-    const [host, setHost] = useState(false)
+    const [give, setGive] = useState(false);
+    const [host, setHost] = useState(false);
     const [hand, setHand] = useState([]);
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
@@ -39,6 +40,7 @@ const Game = (props) => {
         setRoomCode(playerInfo.roomCode);
         setPlayerName(playerInfo.name);
         setPlayerNum(playerInfo.playerNum);
+        
     });
 
     socket.on('setHost', () => {
@@ -67,6 +69,11 @@ const Game = (props) => {
         setCardsPlayed(cardsPlayed);
         setMin(min)
         setMax(max)
+    })
+
+    socket.on('giveCard', (isGive) => {
+        setGive(isGive);
+
     })
     //END GAME LOGIC
 
@@ -119,19 +126,29 @@ const Game = (props) => {
         // e.preventDefault();
         // let selectedCard = e.target.value;
         console.log(selectedCard);
-        if (cardsPlayed.length !== 0) {
-            if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
+        if(yourTurn){
+            if (cardsPlayed.length !== 0) {
+                if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
+                    console.log(`roomCode ${roomCode}`);
+                    socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
+                } else {
+                    setErrors('Play a valid card');
+                }
+            } else if (selectedCard.uid.substring(1, 4) === '07S' && cardsPlayed.length == 0) {
                 console.log(`roomCode ${roomCode}`);
                 socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
             } else {
-                setErrors('Play a valid card');
+                setErrors('Play your 7 of Spades');
             }
-        } else if (selectedCard.uid.substring(1, 4) === '07S' && cardsPlayed.length == 0) {
-            console.log(`roomCode ${roomCode}`);
-            socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
-        } else {
-            setErrors('Play your 7 of Spades');
         }
+        if(give) {
+            setHand(hand.filter(card => card.uid != selectedCard.uid));
+            socket.emit("handCard", {'selectedCard': selectedCard, 'roomCode': roomCode});
+        }
+    }
+
+    const passTurn = () => {
+        socket.emit("pass", roomCode);
     }
 
     const getHandStyles = (i) => {
@@ -149,6 +166,7 @@ const Game = (props) => {
 
     return (
         <div className='gameContainer'>
+            {give ? <div>Select a card to pass on</div> : ""}
             <div id="gameBoard">
                 <div className='spades'>
                     Spades
@@ -230,7 +248,7 @@ const Game = (props) => {
                     })
                     }
                 </div>
-                {yourTurn ? <button>Pass</button> : ""}
+                {yourTurn ? <button onClick={() => passTurn()}>Pass</button> : ""}
             </div>
         </div>
     )
