@@ -42,6 +42,7 @@ class PlayerOrder {
       this.tail = node;
     }
     this.count++;
+    return this;
   }
 
 
@@ -54,8 +55,18 @@ class PlayerOrder {
     temp.prev = this.tail;
     this.tail = this.tail.next;
     this.tail.next = null;
-
+    return this;
   }
+
+  display(){
+    let runner = this.head;
+    while(runner){
+      console.log(runner.name);
+      runner = runner.next;
+    }
+    return this;
+  }
+
 
   moveTailToFront(){
     let temp = this.tail;
@@ -78,7 +89,6 @@ io.on('connection', socket => {
   //vvvvvvvv REMOVE IF YOU WANT TO STOP TESTING!!!!
   testSetup(socket);
   //^^^^^^^^ REMOVE IF YOU WANT TO STOP TESTING!!!!
-  console.log(rooms);
   //GENERAL ROUTES
 
   //END GENERAL ROUTES
@@ -102,40 +112,24 @@ io.on('connection', socket => {
     }
   });
 
-  socket.on('getPlayers', obj => {
+  socket.on('getPlayers', (obj) => {
     //obj contains players and roomCode
     io.to(obj.roomCode).emit('setPlayers', obj.players);
   });
   //END GAME LOBBY ROUTES
 
-
   //GAME START ROUTES
   socket.on('createGame', (roomCode) => {
     console.log('game created!!');
     setupGame(roomCode);
-
   });
+
 
   //GAME ROUTES
-
-  socket.on('cardPlayed', (roomCode, card, playerNum) => {
-    io.to(roomCode).emit('cardPlayed', card);
-    if (currentPlayersTurn + 1 < activeSockets.length) {
-      ++currentPlayersTurn;
-    } else {
-      currentPlayersTurn = 0;
-    }
-    io.to(nextPlayerSocket).emit('yourTurn');
-  });
-
-  socket.on('setFirstPlayer', startingPlayer => {
-    currentPlayersTurn = startingPlayer;
-  })
-
-  socket.on('dealCards', (deck, roomCode) => {
+  socket.on('dealCards', (obj) => {
     console.log(`Deal Cards Deck: ${deck}`)
     console.log(`Deal Cards RC: ${roomCode}`)
-    deal(deck, roomCode);
+    deal(obj.deck, obj.roomCode);
   });
 
   socket.on("myTurn", (roomCode) => {
@@ -143,37 +137,21 @@ io.on('connection', socket => {
   });
 
   socket.on('playedCard', (obj) => {
-    let roomCode = obj.roomCode;
-    let selectedCard = obj.selectedCard;
-    if (!("cardsPlayed" in rooms[roomCode])) {
-      rooms[roomCode]["cardsPlayed"] = [];
+    console.log('card was played');
+    console.log(obj.selectedCard);
+    if (obj.selectedCard.number === 7) {
+      rooms[obj.roomCode]["min"][obj.selectedCard.suit]['min'] = obj.selectedCard.number - 1;
+      rooms[obj.roomCode]["max"][obj.selectedCard.suit]['max'] = obj.selectedCard.number + 1;
+      rooms[obj.roomCode]["max"][obj.selectedCard.suit]['cardsPlayed'].push(obj.selectedCard);
+    } else if (obj.selectedCard.number < 7) {
+      rooms[obj.roomCode]["min"][obj.selectedCard.suit]['cardsPlayed'].push(obj.selectedCard);
+      rooms[obj.roomCode]["min"][obj.selectedCard.suit]['min'] = obj.selectedCard.number - 1;
+    } else {
+      rooms[obj.roomCode]["max"][obj.selectedCard.suit]['cardsPlayed'].push(obj.selectedCard);
+      rooms[obj.roomCode]["max"][obj.selectedCard.suit]['max'] = obj.selectedCard.number + 1;
     }
-    if (rooms[roomCode]["cardsPlayed"].length !== 0) {
-      if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
-        console.log('card was played');
-        selectedCard.played = true;
-        rooms[roomCode]["cardsPlayed"].push(selectedCard);
-        if (selectedCard.number == min[selectedCard.suit]) {
-          rooms[roomCode]["min"][selectedCard.suit] = rooms[roomCode]["min"][selectedCard.suit] - 1;
-        } else {
-          rooms[roomCode]["max"][selectedCard.suit] = rooms[roomCode]["max"][selectedCard.suit] + 1;
-        }
-        // socket.emit('cardPlayed', {'cardsPlayed':rooms[roomCode]["cardsPlayed"], 'min':rooms[roomCode]["min"], 'max':rooms[roomCode]["max"]})
-      }
-    } else if (selectedCard.uid.substring(1, 4) === 's07') {
-      console.log('seven of spades was played');
-      selectedCard.played = true;
-      rooms[roomCode]["cardsPlayed"].push(selectedCard);
-      rooms[roomCode]["min"]['S'] = 6;
-      rooms[roomCode]["max"]['S'] = 8;
-    }
-    socket.to(roomCode).emit("setCards", {
-      'cardsPlayed': rooms[roomCode]["cardsPlayed"]
-      , 'min': rooms[roomCode]["min"]['S'] = 6
-      , 'max': rooms[roomCode]["max"]['S'] = 8
-    });
-    rooms[roomCode]['playerOrder'].moveHeadToBack();
-    io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
+    io.to(obj.roomCode).emit("setCards", { 'min': rooms[obj.roomCode]["min"], 'max': rooms[obj.roomCode]["max"] });
+    io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
 
   io.on('pass', (roomCode) => {
@@ -188,6 +166,7 @@ io.on('connection', socket => {
     rooms[card.roomCode]['playerOrder'].moveHeadToBack();
   });
   //END GAME ROUTES
+
 });
 //^END IO Connection Bracket
 
@@ -200,7 +179,6 @@ function sendPlayerInfo(roomCode) {
   }
   io.to(rooms[roomCode]['hostSocket']).emit('setHost', null);
 }
-
 
 function getRooms() {
   const arr = Array.from(io.sockets.adapter.rooms);
@@ -225,8 +203,8 @@ function getRooms() {
 function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
   console.log('setting up game');
-  rooms[roomCode]["min"] = { 'C': null, 'D': null, 'H': null, 'S': null }
-  rooms[roomCode]["max"] = { 'C': null, 'D': null, 'H': null, 'S': null }
+  rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } }
+  rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } }
   let runner = rooms[roomCode]["playerOrder"].head;
   let pn = 1;
   while (runner) {
