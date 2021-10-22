@@ -40,7 +40,7 @@ const Game = (props) => {
         setRoomCode(playerInfo.roomCode);
         setPlayerName(playerInfo.name);
         setPlayerNum(playerInfo.playerNum);
-        
+
     });
 
     socket.on('setHost', () => {
@@ -73,7 +73,12 @@ const Game = (props) => {
 
     socket.on('giveCard', (isGive) => {
         setGive(isGive);
+        setYourTurn(isGive);
+        socket.emit("myTurn", roomCode);
+    })
 
+    socket.on('handCard', (obj) => {
+        setHand([...hand, obj.card]);
     })
     //END GAME LOGIC
 
@@ -125,7 +130,11 @@ const Game = (props) => {
     const onClickHandler = (selectedCard) => {
         console.log('Card Selected' + selectedCard.uid);
         console.log(selectedCard);
-        if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
+        if (give) {
+            setHand(hand.filter(card => card.uid != selectedCard.uid));
+            socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
+            setYourTurn(false);
+        } else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
             selectedCard.played = true;
             setSevenClubsPlayed(true);
             setYourTurn(false);
@@ -141,10 +150,7 @@ const Game = (props) => {
                 setErrors('Play your 7 of Spades');
             }
         }
-        if(give) {
-            setHand(hand.filter(card => card.uid != selectedCard.uid));
-            socket.emit("handCard", {'selectedCard': selectedCard, 'roomCode': roomCode});
-        }
+
     }
 
     const passTurn = () => {
@@ -238,10 +244,12 @@ const Game = (props) => {
                 </div>
             </div>
 
-            <div className="hand">
+            <div className='messages'>
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
+                <h1>{give && `Please Pass a Card`}</h1>
                 <p>{errors}</p>
-
+            </div>
+            <div className="hand">
                 <div className='cardInHandPostion' >
                     {yourTurn && hand.map((card, i) => {
                         return (
@@ -260,8 +268,8 @@ const Game = (props) => {
                     })
                     }
                 </div>
-                {yourTurn ? <button onClick={() => passTurn()}>Pass</button> : ""}
             </div>
+            {yourTurn && <button onClick={() => passTurn()}>Pass</button>}
         </div>
     )
 
