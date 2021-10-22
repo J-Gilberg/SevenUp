@@ -11,10 +11,8 @@ class Player {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
     this.playerNum = playerInfo.playerNum;
-    this.hand = null;
     this.next = null;
     this.prev = null;
-    this.give = false;
     this.count = 0;
   }
 }
@@ -156,14 +154,13 @@ io.on('connection', socket => {
 
   io.on('pass', (roomCode) => {
     rooms[roomCode]['playerOrder'].moveTailToFront();
-    rooms[roomCode]['playerOrder'].head.give = true;
     io.to(rooms[roomCode]['playerOrder'].head.socket).emit('giveCard', true);
   });
 
-  io.on('handCard', (card) => {
-    rooms[card.roomCode]['playerOrder'].moveHeadToBack();
-    rooms[card.roomCode]['playerOrder'].head.hand.push(card.selectedCard);
-    rooms[card.roomCode]['playerOrder'].moveHeadToBack();
+  io.on('handCard', (obj) => {
+    rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
+    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj);
+    io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
   //END GAME ROUTES
 
