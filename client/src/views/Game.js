@@ -23,15 +23,15 @@ const Game = (props) => {
     const [hand, setHand] = useState([]);
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
-    const [cardsPlayed, setCardsPlayed] = useState([]);
-    const [min, setMin] = useState({ 'C': null, 'D': null, 'H': null, 'S': null })
-    const [max, setMax] = useState({ 'C': null, 'D': null, 'H': null, 'S': null })
+    const [min, setMin] = useState({ 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } })
+    const [max, setMax] = useState({ 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } })
+    const [sevenClubsPlayed, setSevenClubsPlayed] = useState(false);
     const [images, setImages] = useState(imageLoader())
 
 
     // useEffect(() => {
 
-    // }, [hand])
+    // }, [hand, yourTurn])
 
     //PLAYER INIT ROUTES
     socket.on('playerInfo', (playerInfo) => {
@@ -63,10 +63,10 @@ const Game = (props) => {
         setHand(sortHand(hand));
     });
 
-    socket.on('setCards', (cardsPlayed, min, max) => {
-        setCardsPlayed(cardsPlayed);
-        setMin(min)
-        setMax(max)
+    socket.on('setCards', (obj) => {
+        setSevenClubsPlayed(true);
+        setMin(obj.min)
+        setMax(obj.max)
     })
     //END GAME LOGIC
 
@@ -112,25 +112,27 @@ const Game = (props) => {
     //END DISPLAY FUNCTIONS
 
     //DISPLAY LOGIC
-    // onvlcik for card, set card in hand and overall card pool to played
+    // onclick for card, set card in hand and overall card pool to played
     // display on 1st game board by default, if not, move on to next available/possible board 
     // 
     const onClickHandler = (selectedCard) => {
-        // e.preventDefault();
-        // let selectedCard = e.target.value;
+        console.log('Card Selected' + selectedCard.uid);
         console.log(selectedCard);
-        if (cardsPlayed.length !== 0) {
-            if (Math.abs(min[selectedCard.suit] - selectedCard.number) == 0 || Math.abs(max[selectedCard.suit] - selectedCard.number) == 0) {
-                console.log(`roomCode ${roomCode}`);
-                socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
-            } else {
-                setErrors('Play a valid card');
-            }
-        } else if (selectedCard.uid.substring(1, 4) === '07S' && cardsPlayed.length == 0) {
-            console.log(`roomCode ${roomCode}`);
-            socket.emit("playedCard", {'roomCode':roomCode, 'selectedCard':selectedCard});
+        if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
+            selectedCard.played = true;
+            setSevenClubsPlayed(true);
+            setYourTurn(false);
+            socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
+        } else if (sevenClubsPlayed && (min[selectedCard.suit]['min'] - selectedCard.number == 0 || max[selectedCard.suit]['max'] - selectedCard.number == 0)) {
+            selectedCard.played = true;
+            socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
+            setYourTurn(false);
         } else {
-            setErrors('Play your 7 of Spades');
+            if (sevenClubsPlayed) {
+                setErrors('Play a valid card');
+            } else {
+                setErrors('Play your 7 of Spades');
+            }
         }
     }
 
@@ -152,59 +154,71 @@ const Game = (props) => {
             <div id="gameBoard">
                 <div className='spades'>
                     Spades
-                    {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'S' && card.number === 7) {
+                    <div>
+                        {min['S']['cardsPlayed'].map((card, i) => {
                             return (
-                                <div>
-                                    <p>{min.S !== 7 && min.S}</p>
-                                    <p>7</p>
-                                    <p>{max.S !== 7 && max.S}</p>
-                                </div>
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
-                        }
-                    })}
+                        })}
+                    </div>
+                    <div>
+                        {max['S']['cardsPlayed'].map((card, i) => {
+                            return (
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                            )
+                        })}
+                    </div>
                 </div>
                 <div className='clubs'>
                     Clubs
-                    {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'C' && card.number === 7) {
+                    <div>
+                        {min['C']['cardsPlayed'].map((card, i) => {
                             return (
-                                <div>
-                                    <p>{min.C !== 7 && min.C}</p>
-                                    <p>7</p>
-                                    <p>{max.C !== 7 && max.C}</p>
-                                </div>
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
-                        }
-                    })}
+                        })}
+                    </div>
+                    <div>
+                        {max['C']['cardsPlayed'].map((card, i) => {
+                            return (
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                            )
+                        })}
+                    </div>
                 </div>
                 <div className='diamonds'>
                     Diamonds
-                    {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'D' && card.number === 7) {
+                    <div>
+                        {min['D']['cardsPlayed'].map((card, i) => {
                             return (
-                                <div>
-                                    <p>{min.D !== 7 && min.D}</p>
-                                    <p>7</p>
-                                    <p>{max.D !== 7 && max.D}</p>
-                                </div>
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
-                        }
-                    })}
+                        })}
+                    </div>
+                    <div>
+                        {max['D']['cardsPlayed'].map((card, i) => {
+                            return (
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                            )
+                        })}
+                    </div>
                 </div>
                 <div className='hearts'>
                     Hearts
-                    {cardsPlayed.map((card, i) => {
-                        if (card.suits === 'H' && card.number === 7) {
+                    <div>
+                        {min['H']['cardsPlayed'].map((card, i) => {
                             return (
-                                <div>
-                                    <p>{min.H !== 7 && min.H}</p>
-                                    <p>7</p>
-                                    <p>{max.H !== 7 && max.H}</p>
-                                </div>
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
-                        }
-                    })}
+                        })}
+                    </div>
+                    <div>
+                        {max['H']['cardsPlayed'].map((card, i) => {
+                            return (
+                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                            )
+                        })}
+                    </div>
                 </div>
             </div>
 
