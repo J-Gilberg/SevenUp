@@ -14,6 +14,7 @@ class Player {
     this.hand = null;
     this.next = null;
     this.prev = null;
+    this.give = false;
     this.count = 0;
   }
 }
@@ -66,6 +67,17 @@ class PlayerOrder {
     return this;
   }
 
+
+  moveTailToFront(){
+    let temp = this.tail;
+    this.tail = temp.prev;
+    this.tail.next = null;
+
+    this.head.prev = temp;
+    temp.next = this.head;
+    this.head = this.head.prev;
+    this.head.prev = null;
+  }
 }
 
 
@@ -140,6 +152,18 @@ io.on('connection', socket => {
     }
     io.to(obj.roomCode).emit("setCards", { 'min': rooms[obj.roomCode]["min"], 'max': rooms[obj.roomCode]["max"] });
     io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
+  });
+
+  io.on('pass', (roomCode) => {
+    rooms[roomCode]['playerOrder'].moveTailToFront();
+    rooms[roomCode]['playerOrder'].head.give = true;
+    io.to(rooms[roomCode]['playerOrder'].head.socket).emit('giveCard', true);
+  });
+
+  io.on('handCard', (card) => {
+    rooms[card.roomCode]['playerOrder'].moveHeadToBack();
+    rooms[card.roomCode]['playerOrder'].head.hand.push(card.selectedCard);
+    rooms[card.roomCode]['playerOrder'].moveHeadToBack();
   });
   //END GAME ROUTES
 

@@ -19,7 +19,8 @@ const Game = (props) => {
     const [roomCode, setRoomCode] = useState('');
     const [playerName, setPlayerName] = useState('');
     const [playerNum, setPlayerNum] = useState(0);
-    const [host, setHost] = useState(false)
+    const [give, setGive] = useState(false);
+    const [host, setHost] = useState(false);
     const [hand, setHand] = useState([]);
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
@@ -39,6 +40,7 @@ const Game = (props) => {
         setRoomCode(playerInfo.roomCode);
         setPlayerName(playerInfo.name);
         setPlayerNum(playerInfo.playerNum);
+        
     });
 
     socket.on('setHost', () => {
@@ -67,6 +69,11 @@ const Game = (props) => {
         setSevenClubsPlayed(true);
         setMin(obj.min)
         setMax(obj.max)
+    })
+
+    socket.on('giveCard', (isGive) => {
+        setGive(isGive);
+
     })
     //END GAME LOGIC
 
@@ -134,6 +141,14 @@ const Game = (props) => {
                 setErrors('Play your 7 of Spades');
             }
         }
+        if(give) {
+            setHand(hand.filter(card => card.uid != selectedCard.uid));
+            socket.emit("handCard", {'selectedCard': selectedCard, 'roomCode': roomCode});
+        }
+    }
+
+    const passTurn = () => {
+        socket.emit("pass", roomCode);
     }
 
     const getHandStyles = (i) => {
@@ -151,6 +166,7 @@ const Game = (props) => {
 
     return (
         <div className='gameContainer'>
+            {give ? <div>Select a card to pass on</div> : ""}
             <div id="gameBoard">
                 <div className='spades'>
                     Spades
@@ -244,7 +260,7 @@ const Game = (props) => {
                     })
                     }
                 </div>
-                {yourTurn ? <button>Pass</button> : ""}
+                {yourTurn ? <button onClick={() => passTurn()}>Pass</button> : ""}
             </div>
         </div>
     )
