@@ -14,6 +14,7 @@ class Player {
     this.next = null;
     this.prev = null;
     this.count = 0;
+    
   }
 }
 
@@ -46,7 +47,7 @@ class PlayerOrder {
 
   moveHeadToBack() {
     let temp = this.head;
-    this.head = temp.next;
+    this.head = this.head.next;
     this.head.prev = null;
 
     this.tail.next = temp;
@@ -59,7 +60,13 @@ class PlayerOrder {
   display(){
     let runner = this.head;
     while(runner){
-      console.log(runner.name);
+      console.log(`Runner ${runner.name}`);
+      if(runner.next){
+        console.log(`Runner Next exists`);
+      }
+      if(runner.prev){
+        console.log(`Runner Prev exists`);
+      }
       runner = runner.next;
     }
     return this;
@@ -71,13 +78,13 @@ class PlayerOrder {
     this.tail = temp.prev;
     this.tail.next = null;
 
-    this.head.prev = temp;
     temp.next = this.head;
+    this.head.prev = temp;
     this.head = this.head.prev;
     this.head.prev = null;
+    return this;
   }
 }
-
 
 io.on('connection', socket => {
   // let keys = Object.keys(socket);
@@ -125,8 +132,6 @@ io.on('connection', socket => {
 
   //GAME ROUTES
   socket.on('dealCards', (obj) => {
-    console.log(`Deal Cards Deck: ${deck}`)
-    console.log(`Deal Cards RC: ${roomCode}`)
     deal(obj.deck, obj.roomCode);
   });
 
@@ -153,8 +158,8 @@ io.on('connection', socket => {
   });
 
   io.on('pass', (roomCode) => {
-    rooms[roomCode]['playerOrder'].moveTailToFront();
-    io.to(rooms[roomCode]['playerOrder'].head.socket).emit('giveCard', true);
+    console.log('turn passed');
+    io.to(rooms[roomCode]['playerOrder'].moveTailToFront().head.socket).emit('giveCard', true);
   });
 
   io.on('handCard', (obj) => {
@@ -208,7 +213,6 @@ function setupGame(roomCode) {
     runner.playerNum = pn;
     runner = runner.next;
     ++pn;
-    console.log(runner);
   }
   io.to(roomCode).emit('createGame', null);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
