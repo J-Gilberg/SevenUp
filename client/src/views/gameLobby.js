@@ -33,7 +33,7 @@ const GameLobby = () => {
         setPlayerName(playerObject.name);
     });
 
-    socket.on('getPlayers', () => {
+    socket.off('getPlayers').on('getPlayers', () => {
         console.log("getting players from host");
         socket.emit('getPlayers', { players: players, roomCode: roomCode });
     });
@@ -51,7 +51,7 @@ const GameLobby = () => {
     //END GENERAL ROUTES
 
     //HOST SPECICIC ROUTES
-    socket.on('addPlayerToHostList', (name) => {
+    socket.off('addPlayerToHostList').on('addPlayerToHostList', (name) => {
         setPlayers([...players, name]);
     });
 

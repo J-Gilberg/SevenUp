@@ -31,8 +31,7 @@ const Game = (props) => {
 
 
     // useEffect(() => {
-
-    // }, [hand, yourTurn])
+    // }, [yourTurn])
 
     //PLAYER INIT ROUTES
     socket.on('playerInfo', (playerInfo) => {
@@ -54,30 +53,31 @@ const Game = (props) => {
     //     cardsPlayed.push(card);
     // });
 
-    socket.on('yourTurn', (isTurn) => {
+    socket.off('yourTurn').on('yourTurn', (isTurn) => {
         setYourTurn(isTurn);
+        console.log(`YourTurn: ${yourTurn}`)
         if (yourTurn) {
             socket.emit("myTurn", roomCode);
         }
     });
 
-    socket.off('playerHand').on('playerHand', hand => {
+    socket.off('playerHand').off('playerHand').on('playerHand', hand => {
         setHand(sortHand(hand));
     });
 
-    socket.on('setCards', (obj) => {
+    socket.off('setCards').on('setCards', (obj) => {
         setSevenClubsPlayed(true);
-        setMin(obj.min)
+        setMin(obj.min).
         setMax(obj.max)
     })
 
-    socket.on('giveCard', (isGive) => {
+    socket.off('giveCard').on('giveCard', (isGive) => {
         setGive(isGive);
         setYourTurn(isGive);
         socket.emit("myTurn", roomCode);
     })
 
-    socket.on('handCard', (obj) => {
+    socket.off('handCard').on('handCard', (obj) => {
         setHand([...hand, obj.card]);
     })
     //END GAME LOGIC
@@ -139,7 +139,7 @@ const Game = (props) => {
             setSevenClubsPlayed(true);
             setYourTurn(false);
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
-        } else if (sevenClubsPlayed && (min[selectedCard.suit]['min'] - selectedCard.number == 0 || max[selectedCard.suit]['max'] - selectedCard.number == 0)) {
+        } else if (sevenClubsPlayed && ((min[selectedCard.suit]['min'] - selectedCard.number == 0 &&  selectedCard.number - min['S']['min'] >= 0) || (max[selectedCard.suit]['max'] - selectedCard.number == 0 && max['S']['max'] - selectedCard.number >= 0))) {
             selectedCard.played = true;
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
             setYourTurn(false);
@@ -154,7 +154,9 @@ const Game = (props) => {
     }
 
     const passTurn = () => {
+        console.log('turn passed')
         socket.emit("pass", roomCode);
+        setYourTurn(false);
     }
 
     const getHandStyles = (i) => {
