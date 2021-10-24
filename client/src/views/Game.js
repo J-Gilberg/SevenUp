@@ -68,7 +68,7 @@ const Game = (props) => {
     socket.off('setCards').on('setCards', (obj) => {
         setSevenClubsPlayed(true);
         setMin(obj.min).
-        setMax(obj.max)
+            setMax(obj.max)
     })
 
     socket.off('giveCard').on('giveCard', (isGive) => {
@@ -139,7 +139,7 @@ const Game = (props) => {
             setSevenClubsPlayed(true);
             setYourTurn(false);
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
-        } else if (sevenClubsPlayed && ((min[selectedCard.suit]['min'] - selectedCard.number == 0 &&  selectedCard.number - min['S']['min'] >= 0) || (max[selectedCard.suit]['max'] - selectedCard.number == 0 && max['S']['max'] - selectedCard.number >= 0))) {
+        } else if (sevenClubsPlayed && ((min[selectedCard.suit]['min'] - selectedCard.number == 0 && selectedCard.number - min['S']['min'] >= 0) || (max[selectedCard.suit]['max'] - selectedCard.number == 0 && max['S']['max'] - selectedCard.number >= 0))) {
             selectedCard.played = true;
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
             setYourTurn(false);
