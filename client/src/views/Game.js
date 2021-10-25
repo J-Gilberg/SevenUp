@@ -25,6 +25,7 @@ const Game = (props) => {
     const [selectPlay, setSelectPlay] = useState([]);
     const [cardSelected, setCardSelected] = useState({ uid: '', number: 0, suit: '' });
     const [hand, setHand] = useState([]);
+    const [play, setPlay] = useState({});
     const [yourTurn, setYourTurn] = useState(false);
     const [errors, setErrors] = useState('');
     const [min, setMin] = useState({ 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } })
@@ -86,6 +87,15 @@ const Game = (props) => {
     socket.off('handCard').on('handCard', (card) => {
         setHand([...hand, card]);
     })
+
+    socket.off('scoring').on('scoring', (obj) => {
+        let score = 0;
+        let cardsLeft = hand.filter(card => !card.played);
+        for (let i = 0; i < cardsLeft.length; i++) {
+            score += cardsLeft[i].value;
+        }
+        socket.emit("score", { 'score': score, 'socket': obj });
+    })
     //END GAME LOGIC
 
     //DISPLAY FUNCTIONS
@@ -137,17 +147,29 @@ const Game = (props) => {
     const onClickHandler = (selectedCard) => {
         console.log('Card Selected' + selectedCard.uid);
         console.log(selectedCard);
-        let number = selectedCard.number
         if (give) {
             setHand(hand.filter(card => card.uid != selectedCard.uid));
             setYourTurn(false);
             setGive(false);
             setErrors('');
             socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
-        } else if (sevenClubsPlayed
-            && ((min[selectedCard.suit]['min'] - number == 0 && number - min['S']['min'] > 0)
-                || (max[selectedCard.suit]['max'] - number == 0 && max['S']['max'] - number > 0))) {
-            if (!selectedCard.uid === cardSelected.uid && selectedCard.number <= 1) {
+        } else if (selectedCard.suit === 'A') {
+            getPlays(selectedCard);
+            setCardSelected(selectedCard);
+        } else if (
+            sevenClubsPlayed
+            && (
+                (
+                    (min[selectedCard.suit]['min'] - selectedCard.number == 0 && selectedCard.number - min['S']['min'] > 0)
+                    || (max[selectedCard.suit]['max'] - selectedCard.number == 0 && max['S']['max'] - selectedCard.number > 0)
+                )
+                || (
+                    selectedCard.suit == 'S' && (min[selectedCard.suit]['min'] - selectedCard.number == 0)
+                    || (max[selectedCard.suit]['max'] - selectedCard.number == 0)
+                )
+            )
+        ) {
+            if (selectedCard.uid != cardSelected.uid && selectedCard.number <= 1) {
                 getPlays(selectedCard);
                 setCardSelected(selectedCard);
             } else {
@@ -172,36 +194,47 @@ const Game = (props) => {
             }
         }
     }
-
-    const optionHandler = (e) => {
+    const playHandler = (e) => {
         e.preventDefault();
-        console.log(e.target.value);
+        console.log(selectPlay[e.target.value]);
+        setPlay(selectPlay[e.target.value]);
+        console.log(play);
+    }
+    const optionHandler = () => {
         let tempCard = cardSelected;
-        tempCard.number = e.target.value.number;
-        tempCard.suit = e.target.value.suit;
+        tempCard.number = play.number;
+        tempCard.suit = play.suit;
         onClickHandler(tempCard);
+        setCardSelected({ uid: '', number: 0, suit: '' });
     }
 
     const getPlays = (selectedCard) => {
         let suitNames = getSuitNames();
         if (selectedCard.number === 0) {
+            let plays = [];
             Object.keys(min).forEach((suit) => {
-                if (min[suit]['min'] >= 1) setSelectPlay([...selectPlay, { 'suit': suit, 'number': min[suit]['min'], 'desc': `${suitNames[suit]} - ${min[suit]['min']}` }]);
-                if (max[suit]['max'] <= 14) setSelectPlay([...selectPlay, { 'suit': suit, 'number': max[suit]['max'], 'desc': `${suitNames[suit]} - ${max[suit]['max']}` }]);
+                console.log(`suit ${suit}`);
+                console.log(`suit min ${min[suit]['min']}`);
+                console.log(`suit max ${min[suit]['max']}`);
+
+                if (min[suit]['min'] >= 1) plays.push({ 'suit': suit, 'number': min[suit]['min'], 'desc': `${min[suit]['min']} of ${suitNames[suit]}` });
+                if (max[suit]['max'] <= 14) plays.push({ 'suit': suit, 'number': max[suit]['max'], 'desc': `${max[suit]['max']} of ${suitNames[suit]}` });
             });
+            setSelectPlay(plays);
+            console.log(selectPlay);
         } else {
             if (min[selectedCard.suit]['min'] == 1) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': min[selectedCard.suit]['min'], 'desc': `${min[selectedCard.suit]['min']} of ${suitNames[selectedCard.suit]}` }]);
             if (max[selectedCard.suit]['max'] == 14) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': max[selectedCard.suit]['max'], 'desc': `${max[selectedCard.suit]['max']} of ${suitNames[selectedCard.suit]}` }]);
         }
         if (selectPlay.length === 1) {
-            selectedCard.number = selectPlay[0].number
-            selectedCard.suit = selectPlay[0].suit
+            selectedCard.number = selectPlay[0].number;
+            selectedCard.suit = selectPlay[0].suit;
             onClickHandler(selectedCard);
         }
     }
 
     const passTurn = () => {
-        console.log('turn passed')
+        console.log('turn passed');
         socket.emit('pass', roomCode);
         setYourTurn(false);
     }
@@ -218,7 +251,7 @@ const Game = (props) => {
 
     const getSuitNames = (suit = 'All') => {
         let suitNames = { 'S': 'Spades', 'D': 'Diamonds', 'H': 'Hearts', 'C': 'Clubs' };
-        if(suit === 'All') return suitNames;
+        if (suit === 'All') return suitNames;
         return suitNames[suit];
     }
 
@@ -234,14 +267,14 @@ const Game = (props) => {
                     <div>
                         {min['S']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
                     <div>
                         {max['S']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
@@ -251,14 +284,14 @@ const Game = (props) => {
                     <div>
                         {min['C']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
                     <div>
                         {max['C']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
@@ -268,14 +301,14 @@ const Game = (props) => {
                     <div>
                         {min['D']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
                     <div>
                         {max['D']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
@@ -285,14 +318,14 @@ const Game = (props) => {
                     <div>
                         {min['H']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
                     <div>
                         {max['H']['cardsPlayed'].map((card, i) => {
                             return (
-                                <img src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             )
                         })}
                     </div>
@@ -302,7 +335,7 @@ const Game = (props) => {
             <div className='messages'>
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <h1>{give && `Please Pass a Card`}</h1>
-                <h1>{ }</h1>
+                <h1>{cardSelected.uid != '' && 'Select A Play'}</h1>
                 <p>{errors}</p>
             </div>
             <div className="hand">
@@ -325,16 +358,18 @@ const Game = (props) => {
                     }
                 </div>
             </div>
-            {cardSelected.uid != '' && <form onSubmit={() => optionHandler}>
-                <p>{`Choose a play for ${cardSelected.number} of ${getSuitNames(cardSelected.suit)}`}</p>
-                <select name='option'>
-                    {selectPlay.map((option) => {
-                        return (<option value={option}>{option.desc}</option>)
+            {cardSelected.uid != '' && <div>
+                {cardSelected.number ? <p>{`Choose a play for ${cardSelected.number} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
+                <select onChange={playHandler}>
+                    <option value="" selected>Select A Card</option>
+                    {selectPlay.map((option, i) => {
+                        return (<option value={i}>{option.desc}</option>)
                     })
                     }
                 </select>
-                <input type="submit" value='Play Card' />
-            </form>}
+                <button onClick={()=>{if(play.hasOwnProperty('suit')){optionHandler()}}}>Play Card</button>
+            </div>
+            }
             {yourTurn && !give && <button onClick={() => passTurn()}>Pass</button>}
         </div>
     )
