@@ -11,6 +11,7 @@ class Player {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
     this.playerNum = playerInfo.playerNum;
+    this.score = 0;
     this.next = null;
     this.prev = null;
     this.count = 0;
@@ -102,7 +103,7 @@ io.on('connection', socket => {
   socket.on('newPlayer', newPlayer => {
     if (getRooms().includes(newPlayer.roomCode)) {
       socket.join(newPlayer.roomCode);
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0, score: 0 })
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('getPlayers');
       io.to(socket.id).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
@@ -167,6 +168,26 @@ io.on('connection', socket => {
     io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
     io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
+
+  socket.on('roundOver', (roomCode) => {
+    let runner = rooms[roomCode]['playerOrder'].head;
+    while (runner){
+      io.to(runner.socket).emit('scoring', runner.socket);
+      runner = runner.next;
+    }
+    
+  })
+
+  socket.on('score', (obj) => {
+    let runner = rooms[obj.roomCode]['playerOrder'].head;
+    while (runner){
+      if (runner.socket === obj.socket){
+        runner.score += obj.score;
+        return;
+      }
+      runner = runner.next;
+    }
+  })
   //END GAME ROUTES
 
 });
