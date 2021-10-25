@@ -50,7 +50,7 @@ import  _10H from "../images/cards/Minicard_10H.png"
 import  _11H from "../images/cards/Minicard_11H.png"
 import  _12H from "../images/cards/Minicard_12H.png"
 import  _13H from "../images/cards/Minicard_13H.png"
-// import  _00A from "../images/cards/Minicard_00A.png"
+import  _00A from "../images/cards/Minicard_00A.png"
 import  _back from "../images/cards/Minicard_back.png"
 import  _uC from "../images/cards/Minicard_uC.png"
 import  _uD from "../images/cards/Minicard_uD.png"
@@ -112,7 +112,7 @@ const images = {
     ,"Minicard_11H":_11H
     ,"Minicard_12H":_12H
     ,"Minicard_13H":_13H
-    // ,"Minicard_00A":_00A
+    ,"Minicard_00A":_00A
     ,"Minicard_back":_back
     ,"Minicard_uC":_uC
     ,"Minicard_uD":_uD

@@ -157,14 +157,14 @@ io.on('connection', socket => {
     io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
 
-  io.on('pass', (roomCode) => {
+  socket.on('pass', (roomCode) => {
     console.log('turn passed');
     io.to(rooms[roomCode]['playerOrder'].moveTailToFront().head.socket).emit('giveCard', true);
-  });
+  });+
 
-  io.on('handCard', (obj) => {
+  socket.on('handCard', (obj) => {
     rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
-    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj);
+    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
     io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
   //END GAME ROUTES
