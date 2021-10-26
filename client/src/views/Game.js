@@ -31,8 +31,8 @@ const Game = (props) => {
     const [min, setMin] = useState({ 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } })
     const [max, setMax] = useState({ 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } })
     const [sevenClubsPlayed, setSevenClubsPlayed] = useState(false);
-    const [images, setImages] = useState(imageLoader())
-
+    const [images, setImages] = useState(imageLoader());
+    const [scores, setScores] = useState({});
 
     // useEffect(() => {
     // }, [yourTurn])
@@ -88,14 +88,19 @@ const Game = (props) => {
         setHand([...hand, card]);
     })
 
-    socket.off('scoring').on('scoring', (obj) => {
+    socket.off('getScore').on('getScore', (socketId) => {
         let score = 0;
         let cardsLeft = hand.filter(card => !card.played);
         for (let i = 0; i < cardsLeft.length; i++) {
             score += cardsLeft[i].value;
         }
-        socket.emit("score", { 'score': score, 'socket': obj });
+        socket.emit("getScore", { 'score': score, 'roomCode': roomCode });
     })
+
+    socket.off('setScores').on('setScores',(obj)=>{
+        setScores(obj);
+    });
+
     //END GAME LOGIC
 
     //DISPLAY FUNCTIONS
@@ -137,6 +142,8 @@ const Game = (props) => {
         console.log(output);
         return output;
     }
+
+
     //END DISPLAY FUNCTIONS
 
     //DISPLAY LOGIC
@@ -177,7 +184,12 @@ const Game = (props) => {
                 setYourTurn(false);
                 setErrors('');
                 setSelectPlay([]);
-                socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
+                console.log(hand.filter(card => !card.played).length);
+                if (hand.filter(card => !card.played).length == 0) {
+                    socket.emit("roundOver", roomCode);
+                } else {
+                    socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
+                }
             }
         } else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
             selectedCard.played = true;
@@ -186,6 +198,7 @@ const Game = (props) => {
             setErrors('');
             cardSelected.uid = ''
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
+
         } else {
             if (sevenClubsPlayed) {
                 setErrors('Play a valid card');
@@ -249,6 +262,16 @@ const Game = (props) => {
         }
     }
 
+    const getSuitStackStyles = (i) => {
+        return {
+            position: 'absolute'
+            , zindex: i
+            , top: (i * 30) + 'px'
+            , height: '120px'
+            , width: '80px'
+        }
+    }
+
     const getSuitNames = (suit = 'All') => {
         let suitNames = { 'S': 'Spades', 'D': 'Diamonds', 'H': 'Hearts', 'C': 'Clubs' };
         if (suit === 'All') return suitNames;
@@ -261,77 +284,72 @@ const Game = (props) => {
     return (
         <div className='gameContainer'>
             {give ? <div>Select a card to pass on</div> : ""}
-            <div id="gameBoard">
-                <div className='spades'>
-                    Spades
-                    <div>
-                        {min['S']['cardsPlayed'].map((card, i) => {
-                            return (
+            <div className="gameBoard">
+                <div className='spades suitStack'>
+                    {min['S']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
-                    <div>
-                        {max['S']['cardsPlayed'].map((card, i) => {
-                            return (
+                            </div>
+                        )
+                    })}
+                    {max['S']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
+                            </div>
+                        )
+                    })}
                 </div>
-                <div className='clubs'>
-                    Clubs
-                    <div>
-                        {min['C']['cardsPlayed'].map((card, i) => {
-                            return (
+                <div className='clubs suitStack'>
+                    {min['C']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
-                    <div>
-                        {max['C']['cardsPlayed'].map((card, i) => {
-                            return (
+                            </div>
+                        )
+                    })}
+                    {max['C']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
+                            </div>
+                        )
+                    })}
                 </div>
-                <div className='diamonds'>
-                    Diamonds
-                    <div>
-                        {min['D']['cardsPlayed'].map((card, i) => {
-                            return (
+                <div className='diamonds suitStack'>
+                    {min['D']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
-                    <div>
-                        {max['D']['cardsPlayed'].map((card, i) => {
-                            return (
+                            </div>
+                        )
+                    })}
+                    {max['D']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
+                            </div>
+                        )
+                    })}
                 </div>
-                <div className='hearts'>
-                    Hearts
-                    <div>
-                        {min['H']['cardsPlayed'].map((card, i) => {
-                            return (
+                <div className='hearts suitStack'>
+                    {min['H']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
-                    <div>
-                        {max['H']['cardsPlayed'].map((card, i) => {
-                            return (
+                            </div>
+                        )
+                    })}
+                    {max['H']['cardsPlayed'].map((card, i) => {
+                        return (
+                            <div style={getSuitStackStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            )
-                        })}
-                    </div>
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
-
             <div className='messages'>
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
                 <h1>{give && `Please Pass a Card`}</h1>
@@ -367,7 +385,7 @@ const Game = (props) => {
                     })
                     }
                 </select>
-                <button onClick={()=>{if(play.hasOwnProperty('suit')){optionHandler()}}}>Play Card</button>
+                <button onClick={() => { if (play.hasOwnProperty('suit')) { optionHandler() } }}>Play Card</button>
             </div>
             }
             {yourTurn && !give && <button onClick={() => passTurn()}>Pass</button>}

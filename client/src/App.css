@@ -4,16 +4,11 @@
 }
 
 .App {
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
   height: 100vh;
 }
 
 .backgound{
   background-color: grey;
-
 }
 
 *{
@@ -32,10 +27,18 @@
 
 .gameBoard{
   display: flex;
-  align-items: center;
   justify-content: center;
-  height: auto;
-  width: 100%;
+  align-items: center;
+  padding: 10px;
+  min-height: 360px;
+}
+
+.suitStack{
+  position: relative;
+  min-width: 80px;
+  width: 25%;
+  min-height: 120px;
+  height: 100%;
 }
 
 .gameContainer{
