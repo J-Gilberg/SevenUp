@@ -3,14 +3,13 @@ const app = express();
 const server = app.listen(8000, () => console.log('The server is all fired up on port 8000'));
 const io = require('socket.io')(server, { cors: true });
 
-// roomCode > hostSocket,deck,playerOrder > socket,name,playerNum
+// roomCode > hostSocket,deck,playerOrder > socket,name
 var rooms = {};
 
 class Player {
   constructor(playerInfo) {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
-    this.playerNum = playerInfo.playerNum;
     this.score = 0;
     this.next = null;
     this.prev = null;
@@ -103,7 +102,7 @@ io.on('connection', socket => {
   socket.on('newPlayer', newPlayer => {
     if (getRooms().includes(newPlayer.roomCode)) {
       socket.join(newPlayer.roomCode);
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0, score: 0 })
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name})
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('getPlayers');
       io.to(socket.id).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
@@ -112,7 +111,7 @@ io.on('connection', socket => {
       socket.join(newPlayer.roomCode);
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
       rooms[newPlayer.roomCode]["playerOrder"] = new PlayerOrder();
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name})
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
       io.to(socket.id).emit('setPlayers', [newPlayer.name])
     }
@@ -198,8 +197,15 @@ io.on('connection', socket => {
 function sendPlayerInfo(roomCode) {
   console.log('sending Player Info');
   let runner = rooms[roomCode]['playerOrder'].head;
+  let scores = {};
   while (runner) {
-    io.to(runner.socket).emit('playerInfo', { roomCode: roomCode, name: runner.name, playerNum: runner.playerNum })
+    scores[runner.name] = runner.score;
+    runner = runner.next;
+  }
+  console.log(scores);
+  runner = rooms[roomCode]['playerOrder'].head;
+  while (runner) {
+    io.to(runner.socket).emit('playerInfo', { 'roomCode': roomCode, 'name': runner.name, 'scores':scores})
     runner = runner.next;
   }
   io.to(rooms[roomCode]['hostSocket']).emit('setHost', null);
@@ -253,21 +259,20 @@ function deal(deck, roomCode) {
   deck = shuffle(deck);
   console.log('dealing');
   var playerCount = rooms[roomCode]["playerOrder"].count;
-  var playerNum = 1;
+  var handNum = 1;
   var playerHands = [];
 
   for (let i = 0; i < playerCount; ++i) {
     playerHands.push([]);
   }
   for (let j = 0; j < deck.length; ++j) {
-    deck[j].playerNum = playerNum;
     if (deck[j].uid.substring(1, 4) === '07S') {
-      rooms[roomCode]["startingPlayer"] = playerNum;
+      rooms[roomCode]["startingPlayer"] = handNum;
     }
-    playerHands[playerNum - 1].push(deck[j]);
-    ++playerNum;
-    if (playerNum === playerCount + 1) {
-      playerNum = 1;
+    playerHands[handNum - 1].push(deck[j]);
+    ++handNum;
+    if (handNum === playerCount + 1) {
+      handNum = 1;
     }
   }
   //add hands to rooms object
@@ -300,7 +305,6 @@ function buildDeck(playerCount) {
     , suit: "A"
     , value: 50
     , played: false
-    , playerNum: 0
     , uid: '00A'
   }
 
@@ -323,7 +327,6 @@ function buildDeck(playerCount) {
           , suit: suits[j]
           , value: cardValue
           , played: false
-          , playerNum: 0
           , uid: `${i}${strK.substring(strK.length - 2, strK.length)}${suits[j]}`
         })
       }
@@ -346,7 +349,7 @@ function testSetup(socket) {
     //joins to room
     socket.join(roomCode);
     //creates player node in DLL
-    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count], playerNum: 0 })
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count]})
     //sets player to host list.
     io.to(rooms[roomCode].hostSocket).emit('addPlayerToHostList', names[count]);
     //gets all players
@@ -358,7 +361,7 @@ function testSetup(socket) {
     socket.join(roomCode);
     rooms[roomCode] = { hostSocket: socket.id };
     rooms[roomCode]["playerOrder"] = new PlayerOrder();
-    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count], playerNum: 0 })
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count]})
     io.to(socket.id).emit('newPlayer', { host: true, name: names[count], roomCode: roomCode });
     io.to(socket.id).emit('setPlayers', [names[count]])
     io.to(socket.id).emit('testMoveToLobby', roomCode);
