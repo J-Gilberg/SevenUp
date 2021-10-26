@@ -1,6 +1,4 @@
-import e from 'cors';
 import React, { useContext, useEffect, useState } from 'react'
-import { Socket } from 'socket.io';
 import { SocketContext } from "../context/Socket";
 import imageLoader from '../images/images';
 
@@ -19,7 +17,6 @@ const Game = (props) => {
     const socket = useContext(SocketContext);
     const [roomCode, setRoomCode] = useState('');
     const [playerName, setPlayerName] = useState('');
-    const [playerNum, setPlayerNum] = useState(0);
     const [give, setGive] = useState(false);
     const [host, setHost] = useState(false);
     const [selectPlay, setSelectPlay] = useState([]);
@@ -42,8 +39,7 @@ const Game = (props) => {
         console.log(`roomCode ${playerInfo.roomCode}`)
         setRoomCode(playerInfo.roomCode);
         setPlayerName(playerInfo.name);
-        setPlayerNum(playerInfo.playerNum);
-
+        setScores(playerInfo.scores);
     });
 
     socket.on('setHost', () => {
@@ -97,7 +93,9 @@ const Game = (props) => {
         socket.emit("getScore", { 'score': score, 'roomCode': roomCode });
     })
 
-    socket.off('setScores').on('setScores',(obj)=>{
+    socket.off('setScores').on('setScores', (obj) => {
+        console.log('scores set');
+        console.log(obj);
         setScores(obj);
     });
 
@@ -116,7 +114,7 @@ const Game = (props) => {
             let changes = false;
             if (cardSuits[suit].length <= 0) {
                 sorted = true;
-            } else if (cardSuits[suit].length == 1) {
+            } else if (cardSuits[suit].length === 1) {
                 sorted = true;
             }
             while (!sorted) {
@@ -155,7 +153,8 @@ const Game = (props) => {
         console.log('Card Selected' + selectedCard.uid);
         console.log(selectedCard);
         if (give) {
-            setHand(hand.filter(card => card.uid != selectedCard.uid));
+            console.log('made it through is give');
+            setHand(hand.filter(card => card.uid !== selectedCard.uid));
             setYourTurn(false);
             setGive(false);
             setErrors('');
@@ -163,42 +162,16 @@ const Game = (props) => {
         } else if (selectedCard.suit === 'A') {
             getPlays(selectedCard);
             setCardSelected(selectedCard);
-        } else if (
-            sevenClubsPlayed
-            && (
-                (
-                    (min[selectedCard.suit]['min'] - selectedCard.number == 0 && selectedCard.number - min['S']['min'] > 0)
-                    || (max[selectedCard.suit]['max'] - selectedCard.number == 0 && max['S']['max'] - selectedCard.number > 0)
-                )
-                || (
-                    selectedCard.suit == 'S' && (min[selectedCard.suit]['min'] - selectedCard.number == 0)
-                    || (max[selectedCard.suit]['max'] - selectedCard.number == 0)
-                )
-            )
-        ) {
-            if (selectedCard.uid != cardSelected.uid && selectedCard.number <= 1) {
-                getPlays(selectedCard);
-                setCardSelected(selectedCard);
-            } else {
-                selectedCard.played = true;
-                setYourTurn(false);
-                setErrors('');
-                setSelectPlay([]);
-                console.log(hand.filter(card => !card.played).length);
-                if (hand.filter(card => !card.played).length == 0) {
-                    socket.emit("roundOver", roomCode);
-                } else {
-                    socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
-                }
-            }
-        } else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
-            selectedCard.played = true;
-            setSevenClubsPlayed(true);
-            setYourTurn(false);
-            setErrors('');
-            cardSelected.uid = ''
-            socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
-
+        } else if (sevenClubsPlayed && min[selectedCard.suit]['min'] - selectedCard.number === 0 && selectedCard.number > min['S']['min']) {
+            playCard(selectedCard)
+        } else if (sevenClubsPlayed && max[selectedCard.suit]['max'] - selectedCard.number === 0 && max['S']['max'] > selectedCard.number) {
+            playCard(selectedCard);
+        } else if (selectedCard.suit == 'S' && min[selectedCard.suit]['min'] - selectedCard.number === 0) {
+            playCard(selectedCard);
+        } else if (selectedCard.suit == 'S' && max[selectedCard.suit]['max'] - selectedCard.number === 0) {
+            playCard(selectedCard);
+        }else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
+            playCard(selectedCard);
         } else {
             if (sevenClubsPlayed) {
                 setErrors('Play a valid card');
@@ -207,6 +180,26 @@ const Game = (props) => {
             }
         }
     }
+
+    const playCard = (selectedCard) => {
+        console.log('made it through card logic');
+        if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
+            getPlays(selectedCard);
+            setCardSelected(selectedCard);
+        } else {
+            selectedCard.played = true;
+            setYourTurn(false);
+            setErrors('');
+            setSelectPlay([]);
+            console.log(hand.filter(card => !card.played).length);
+            if (hand.filter(card => !card.played).length === 0) {
+                socket.emit("roundOver", roomCode);
+            } else {
+                socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
+            }
+        }
+    }
+
     const playHandler = (e) => {
         e.preventDefault();
         console.log(selectPlay[e.target.value]);
@@ -236,10 +229,12 @@ const Game = (props) => {
             setSelectPlay(plays);
             console.log(selectPlay);
         } else {
-            if (min[selectedCard.suit]['min'] == 1) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': min[selectedCard.suit]['min'], 'desc': `${min[selectedCard.suit]['min']} of ${suitNames[selectedCard.suit]}` }]);
-            if (max[selectedCard.suit]['max'] == 14) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': max[selectedCard.suit]['max'], 'desc': `${max[selectedCard.suit]['max']} of ${suitNames[selectedCard.suit]}` }]);
+            if (min[selectedCard.suit]['min'] === 1) setSelectPlay([{ 'suit': selectedCard.suit, 'number': 1, 'desc': `${min[selectedCard.suit]['min']} of ${suitNames[selectedCard.suit]}` }]);
+            if (max[selectedCard.suit]['max'] === 14) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': 14, 'desc': `${max[selectedCard.suit]['max']} of ${suitNames[selectedCard.suit]}` }]);
+            console.log(selectPlay);
         }
         if (selectPlay.length === 1) {
+            console.log('only one play');
             selectedCard.number = selectPlay[0].number;
             selectedCard.suit = selectPlay[0].suit;
             onClickHandler(selectedCard);
@@ -250,6 +245,8 @@ const Game = (props) => {
         console.log('turn passed');
         socket.emit('pass', roomCode);
         setYourTurn(false);
+        setErrors('');
+        setSelectPlay([]);
     }
 
     const getHandStyles = (i) => {
@@ -262,11 +259,21 @@ const Game = (props) => {
         }
     }
 
-    const getSuitStackStyles = (i) => {
+    const getSuitStackMinStyles = (i) => {
         return {
             position: 'absolute'
-            , zindex: i
-            , top: (i * 30) + 'px'
+            , zindex: 8-i
+            , top: (90 - (i * 30)) + 'px'
+            , height: '120px'
+            , width: '80px'
+        }
+    }
+
+    const getSuitStackMaxStyles = (i) => {
+        return {
+            position: 'absolute'
+            , zindex: (9 + i)
+            , top: (120+ (i * 30)) + 'px'
             , height: '120px'
             , width: '80px'
         }
@@ -288,14 +295,14 @@ const Game = (props) => {
                 <div className='spades suitStack'>
                     {min['S']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMinStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
                     })}
                     {max['S']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMaxStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
@@ -304,14 +311,14 @@ const Game = (props) => {
                 <div className='clubs suitStack'>
                     {min['C']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMinStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
                     })}
                     {max['C']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMaxStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
@@ -320,14 +327,14 @@ const Game = (props) => {
                 <div className='diamonds suitStack'>
                     {min['D']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMinStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
                     })}
                     {max['D']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMaxStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
@@ -336,19 +343,26 @@ const Game = (props) => {
                 <div className='hearts suitStack'>
                     {min['H']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMinStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
                     })}
                     {max['H']['cardsPlayed'].map((card, i) => {
                         return (
-                            <div style={getSuitStackStyles(i)}>
+                            <div style={getSuitStackMaxStyles(i)}>
                                 <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
                             </div>
                         )
                     })}
                 </div>
+            </div>
+            <div className='scores'>
+                <h2>Scores!</h2>
+
+                {Object.keys(scores).map((name) => {
+                    return (<p>{name}: {scores[name]}</p>)
+                })}
             </div>
             <div className='messages'>
                 <h1>{yourTurn && `Its your Turn ${playerName}!!`}</h1>
@@ -376,19 +390,21 @@ const Game = (props) => {
                     }
                 </div>
             </div>
-            {cardSelected.uid != '' && <div>
-                {cardSelected.number ? <p>{`Choose a play for ${cardSelected.number} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
-                <select onChange={playHandler}>
-                    <option value="" selected>Select A Card</option>
-                    {selectPlay.map((option, i) => {
-                        return (<option value={i}>{option.desc}</option>)
-                    })
-                    }
-                </select>
-                <button onClick={() => { if (play.hasOwnProperty('suit')) { optionHandler() } }}>Play Card</button>
+            <div className='options'>
+                {cardSelected.uid != '' && <div>
+                    {cardSelected.number ? <p>{`Choose a play for ${cardSelected.number} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
+                    <select onChange={playHandler}>
+                        <option value="" selected>Select A Card</option>
+                        {selectPlay.map((option, i) => {
+                            return (<option value={i}>{option.desc}</option>)
+                        })
+                        }
+                    </select>
+                    <button onClick={() => { if (play.hasOwnProperty('suit')) { optionHandler() } }}>Play Card</button>
+                </div>
+                }
+                {yourTurn && !give && <button className='button' onClick={() => passTurn()}>Pass</button>}
             </div>
-            }
-            {yourTurn && !give && <button onClick={() => passTurn()}>Pass</button>}
         </div>
     )
 
