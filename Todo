@@ -21,3 +21,12 @@ MVP
 
 Starting Player:
 - need to add logic to determine starting player when there are more than one deck.
+
+
+-Todo's 10/24/21
+    - Add End Round when a player plays their last card. 
+        - ends round for all other players
+    - Tally Score for players with cards.
+    - Re-deal cards
+    - set Score to go out in game-lobby
+    

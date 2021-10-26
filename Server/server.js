@@ -11,6 +11,7 @@ class Player {
     this.socket = playerInfo.socketId;
     this.name = playerInfo.name;
     this.playerNum = playerInfo.playerNum;
+    this.score = 0;
     this.next = null;
     this.prev = null;
     this.count = 0;
@@ -102,7 +103,7 @@ io.on('connection', socket => {
   socket.on('newPlayer', newPlayer => {
     if (getRooms().includes(newPlayer.roomCode)) {
       socket.join(newPlayer.roomCode);
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0 })
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name, playerNum: 0, score: 0 })
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('getPlayers');
       io.to(socket.id).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
@@ -157,16 +158,38 @@ io.on('connection', socket => {
     io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
 
-  io.on('pass', (roomCode) => {
+  socket.on('pass', (roomCode) => {
     console.log('turn passed');
     io.to(rooms[roomCode]['playerOrder'].moveTailToFront().head.socket).emit('giveCard', true);
-  });
+  });+
 
-  io.on('handCard', (obj) => {
+  socket.on('handCard', (obj) => {
     rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
-    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj);
+    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
     io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
   });
+
+  socket.on('roundOver', (roomCode) => {
+    let runner = rooms[roomCode]['playerOrder'].head;
+    while (runner){
+      io.to(runner.socket).emit('getScore', runner.socket);
+      runner = runner.next;
+    }
+  })
+
+  socket.on('getScore', (obj) => {
+    let runner = rooms[obj.roomCode]['playerOrder'].head;
+    let scores = {};
+    while (runner){
+      if (runner.socket === socket.id){
+        runner.score += obj.score;
+      }
+      scores[runner.name] = runner.score;
+      runner = runner.next;
+    }
+    io.to(rooms[obj.roomCode]).emit('setScores', scores);
+    setupGame(obj.roomCode);
+  })
   //END GAME ROUTES
 
 });
@@ -207,13 +230,6 @@ function setupGame(roomCode) {
   console.log('setting up game');
   rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } }
   rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } }
-  let runner = rooms[roomCode]["playerOrder"].head;
-  let pn = 1;
-  while (runner) {
-    runner.playerNum = pn;
-    runner = runner.next;
-    ++pn;
-  }
   io.to(roomCode).emit('createGame', null);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
   deal(rooms[roomCode]["deck"], roomCode);
