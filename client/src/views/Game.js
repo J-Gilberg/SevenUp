@@ -258,7 +258,7 @@ const Game = (props) => {
     const getSuitStackMinStyles = (i) => {
         return {
             position: 'absolute'
-            , zindex: 8 - i
+            , zIndex: 8 - i
             , top: (90 - (i * 30)) + 'px'
             , height: '120px'
             , width: '80px'
@@ -268,7 +268,7 @@ const Game = (props) => {
     const getSuitStackMaxStyles = (i) => {
         return {
             position: 'absolute'
-            , zindex: (9 + i)
+            , zIndex: (9 + i)
             , top: (120 + (i * 30)) + 'px'
             , height: '120px'
             , width: '80px'

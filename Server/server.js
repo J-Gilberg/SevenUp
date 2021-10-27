@@ -187,7 +187,7 @@ io.on('connection', socket => {
       runner = runner.next;
     }
     io.to(rooms[obj.roomCode]).emit('setScores', scores);
-    setupGame(obj.roomCode);
+    redeal(obj.roomCode);
   })
   //END GAME ROUTES
 
@@ -231,11 +231,19 @@ function getRooms() {
 //   return false;
 // } 
 
+function redeal(roomCode){
+  rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
+  rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
+  io.to(obj.roomCode).emit("setCards", { 'min': rooms[obj.roomCode]["min"], 'max': rooms[obj.roomCode]["max"] });
+  deal(rooms[roomCode]["deck"], roomCode);
+  io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
+}
+
 function setupGame(roomCode) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
   console.log('setting up game');
-  rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } }
-  rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } }
+  rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
+  rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
   io.to(roomCode).emit('createGame', null);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
   deal(rooms[roomCode]["deck"], roomCode);
