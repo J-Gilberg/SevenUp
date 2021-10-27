@@ -299,6 +299,7 @@ function buildDeck(playerCount) {
   let oneDeck = [];
   let cardPool = [];
   let suits = ['S', 'D', 'C', 'H'];
+  let cardNames = ['','Ace', '1','2','3','4','5','6','7','8','9','10','Jack','Queen','King'];
   let cardValue;
   let joker = {
     number: 0
@@ -325,6 +326,7 @@ function buildDeck(playerCount) {
         oneDeck.push({
           number: k
           , suit: suits[j]
+          , cardName: cardNames[k]
           , value: cardValue
           , played: false
           , uid: `${i}${strK.substring(strK.length - 2, strK.length)}${suits[j]}`

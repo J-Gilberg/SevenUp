@@ -159,7 +159,7 @@ const Game = (props) => {
             setGive(false);
             setErrors('');
             socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
-        } else if (selectedCard.suit === 'A') {
+        } else if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
             getPlays(selectedCard);
             setCardSelected(selectedCard);
         } else if (sevenClubsPlayed && min[selectedCard.suit]['min'] - selectedCard.number === 0 && selectedCard.number > min['S']['min']) {
@@ -170,7 +170,7 @@ const Game = (props) => {
             playCard(selectedCard);
         } else if (selectedCard.suit == 'S' && max[selectedCard.suit]['max'] - selectedCard.number === 0) {
             playCard(selectedCard);
-        }else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
+        } else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
             playCard(selectedCard);
         } else {
             if (sevenClubsPlayed) {
@@ -183,20 +183,15 @@ const Game = (props) => {
 
     const playCard = (selectedCard) => {
         console.log('made it through card logic');
-        if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
-            getPlays(selectedCard);
-            setCardSelected(selectedCard);
+        selectedCard.played = true;
+        setYourTurn(false);
+        setErrors('');
+        setSelectPlay([]);
+        console.log(hand.filter(card => !card.played).length);
+        if (hand.filter(card => !card.played).length === 0) {
+            socket.emit("roundOver", roomCode);
         } else {
-            selectedCard.played = true;
-            setYourTurn(false);
-            setErrors('');
-            setSelectPlay([]);
-            console.log(hand.filter(card => !card.played).length);
-            if (hand.filter(card => !card.played).length === 0) {
-                socket.emit("roundOver", roomCode);
-            } else {
-                socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
-            }
+            socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
         }
     }
 
@@ -218,19 +213,20 @@ const Game = (props) => {
         let suitNames = getSuitNames();
         if (selectedCard.number === 0) {
             let plays = [];
+            let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
             Object.keys(min).forEach((suit) => {
                 console.log(`suit ${suit}`);
                 console.log(`suit min ${min[suit]['min']}`);
                 console.log(`suit max ${min[suit]['max']}`);
-
-                if (min[suit]['min'] >= 1) plays.push({ 'suit': suit, 'number': min[suit]['min'], 'desc': `${min[suit]['min']} of ${suitNames[suit]}` });
-                if (max[suit]['max'] <= 14) plays.push({ 'suit': suit, 'number': max[suit]['max'], 'desc': `${max[suit]['max']} of ${suitNames[suit]}` });
+                if (min[suit]['min'] >= 1) plays.push({ 'suit': suit, 'number': min[suit]['min'], 'desc': `${cardNames[min[suit]['min']]} of ${suitNames[suit]}` });
+                if (max[suit]['max'] <= 14) plays.push({ 'suit': suit, 'number': max[suit]['max'], 'desc': `${cardNames[max[suit]['max']]} of ${suitNames[suit]}` });
             });
             setSelectPlay(plays);
             console.log(selectPlay);
         } else {
-            if (min[selectedCard.suit]['min'] === 1) setSelectPlay([{ 'suit': selectedCard.suit, 'number': 1, 'desc': `${min[selectedCard.suit]['min']} of ${suitNames[selectedCard.suit]}` }]);
-            if (max[selectedCard.suit]['max'] === 14) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': 14, 'desc': `${max[selectedCard.suit]['max']} of ${suitNames[selectedCard.suit]}` }]);
+            let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
+            if (min[selectedCard.suit]['min'] === 1) setSelectPlay([{ 'suit': selectedCard.suit, 'number': 1, 'desc': `${cardNames[min[selectedCard.suit]['min']]} of ${suitNames[selectedCard.suit]}` }]);
+            if (max[selectedCard.suit]['max'] === 14) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': 14, 'desc': `${cardNames[max[selectedCard.suit]['max']]} of ${suitNames[selectedCard.suit]}` }]);
             console.log(selectPlay);
         }
         if (selectPlay.length === 1) {
@@ -262,7 +258,7 @@ const Game = (props) => {
     const getSuitStackMinStyles = (i) => {
         return {
             position: 'absolute'
-            , zindex: 8-i
+            , zindex: 8 - i
             , top: (90 - (i * 30)) + 'px'
             , height: '120px'
             , width: '80px'
@@ -273,7 +269,7 @@ const Game = (props) => {
         return {
             position: 'absolute'
             , zindex: (9 + i)
-            , top: (120+ (i * 30)) + 'px'
+            , top: (120 + (i * 30)) + 'px'
             , height: '120px'
             , width: '80px'
         }
@@ -293,20 +289,24 @@ const Game = (props) => {
             {give ? <div>Select a card to pass on</div> : ""}
             <div className="gameBoard">
                 <div className='spades suitStack'>
-                    {min['S']['cardsPlayed'].map((card, i) => {
-                        return (
-                            <div style={getSuitStackMinStyles(i)}>
-                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            </div>
-                        )
-                    })}
-                    {max['S']['cardsPlayed'].map((card, i) => {
-                        return (
-                            <div style={getSuitStackMaxStyles(i)}>
-                                <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
-                            </div>
-                        )
-                    })}
+                    <div >
+                        {min['S']['cardsPlayed'].map((card, i) => {
+                            return (
+
+                                <img style={getSuitStackMinStyles(i)} className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+
+                            )
+                        })}
+                    </div>
+                    <div>
+                        {max['S']['cardsPlayed'].map((card, i) => {
+                            return (
+                                <div style={getSuitStackMaxStyles(i)}>
+                                    <img className="cardImg" src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
                 <div className='clubs suitStack'>
                     {min['C']['cardsPlayed'].map((card, i) => {
@@ -392,7 +392,7 @@ const Game = (props) => {
             </div>
             <div className='options'>
                 {cardSelected.uid != '' && <div>
-                    {cardSelected.number ? <p>{`Choose a play for ${cardSelected.number} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
+                    {cardSelected.number ? <p>{`Choose a play for ${cardSelected.cardName} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
                     <select onChange={playHandler}>
                         <option value="" selected>Select A Card</option>
                         {selectPlay.map((option, i) => {
