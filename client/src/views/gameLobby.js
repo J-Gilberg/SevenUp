@@ -10,12 +10,10 @@ const GameLobby = () => {
     const socket = useContext(SocketContext);
     const [roomCode, setRoomCode] = useState('');
     const [playerName, setPlayerName] = useState('');
-    const [playerNum, setPlayerNum] = useState(0);
     const [players, setPlayers] = useState([]);
     const history = useHistory();
-    const [deck, setDeck] = useState([]);
-    const [startingPlayer, setStartingPlayer] = useState(0);
-    const [host, setHost] = useState(false)
+    const [host, setHost] = useState(false);
+    const [pointLimit, setPointLimit] = useState(250);
 
     useEffect(() => {
         socket.on('connection', () => {
@@ -43,11 +41,6 @@ const GameLobby = () => {
         setPlayers(players);
     });
 
-    socket.on('playerInfo', (num)=>{
-        setPlayerNum(num);
-        socket.emit('playerInfo', {roomCode:roomCode,name:playerName});
-
-    });
     //END GENERAL ROUTES
 
     //HOST SPECICIC ROUTES
@@ -59,18 +52,21 @@ const GameLobby = () => {
 
 
     //GAME START TOUTES
-    socket.on('createGame', () => {
-        history.push('/game');
+    socket.on('createGame', (roomCode) => {
+        history.push('/game'+roomCode);
     });
-
-
     //END GAME START ROUTES
 
 
     //EVENT HANDLERS
+    const pointLimitHandler = (e) =>{
+        e.preventDefault();
+        setPointLimit(e.target.value);
+    }
+
     const onClickHandler = (e) => {
         e.preventDefault();
-        socket.emit("createGame", roomCode);
+        socket.emit("createGame", {'roomCode':roomCode, 'pointLimit': pointLimit});
     }
 
 
@@ -80,6 +76,8 @@ const GameLobby = () => {
             <h1>Room Code: {roomCode}</h1>
             <h2>Welcome to the Room: {playerName}</h2>
             {host ? <p>You Are the Host</p>: <p></p>}
+            <label>Point Limit</label>
+            <input value={pointLimit} type="number" onChange={pointLimitHandler}/>
             {
                 players.map((playerName) => {
                     return <div>{playerName}</div>
