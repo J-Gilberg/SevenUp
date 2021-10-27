@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
+import { useHistory } from 'react-router';
 import { SocketContext } from "../context/Socket";
 import imageLoader from '../images/images';
 
@@ -98,8 +99,15 @@ const Game = (props) => {
         console.log(obj);
         setScores(obj);
     });
-
     //END GAME LOGIC
+
+    //GAME END
+
+    socket.off('gameOver').on('gameOver', (roomCode)=>{
+        history.push('/gameEnd/'+roomCode);
+    })
+
+    //END GAME END
 
     //DISPLAY FUNCTIONS
     const sortHand = (hand) => {
@@ -140,8 +148,6 @@ const Game = (props) => {
         console.log(output);
         return output;
     }
-
-
     //END DISPLAY FUNCTIONS
 
     //DISPLAY LOGIC

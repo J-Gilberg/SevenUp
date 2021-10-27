@@ -14,7 +14,7 @@ class Player {
     this.next = null;
     this.prev = null;
     this.count = 0;
-    
+
   }
 }
 
@@ -57,14 +57,14 @@ class PlayerOrder {
     return this;
   }
 
-  display(){
+  display() {
     let runner = this.head;
-    while(runner){
+    while (runner) {
       console.log(`Runner ${runner.name}`);
-      if(runner.next){
+      if (runner.next) {
         console.log(`Runner Next exists`);
       }
-      if(runner.prev){
+      if (runner.prev) {
         console.log(`Runner Prev exists`);
       }
       runner = runner.next;
@@ -73,7 +73,7 @@ class PlayerOrder {
   }
 
 
-  moveTailToFront(){
+  moveTailToFront() {
     let temp = this.tail;
     this.tail = temp.prev;
     this.tail.next = null;
@@ -95,14 +95,16 @@ io.on('connection', socket => {
   testSetup(socket);
   //^^^^^^^^ REMOVE IF YOU WANT TO STOP TESTING!!!!
   //GENERAL ROUTES
-
+  socket.on('disconnect', ()=>{
+    console.log(socket.rooms);
+  });
   //END GENERAL ROUTES
 
   //GAME LOBBY ROUTES
   socket.on('newPlayer', newPlayer => {
     if (getRooms().includes(newPlayer.roomCode)) {
       socket.join(newPlayer.roomCode);
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name})
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name })
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('addPlayerToHostList', newPlayer.name);
       io.to(rooms[newPlayer.roomCode].hostSocket).emit('getPlayers');
       io.to(socket.id).emit('newPlayer', { host: false, name: newPlayer.name, roomCode: newPlayer.roomCode });
@@ -111,7 +113,7 @@ io.on('connection', socket => {
       socket.join(newPlayer.roomCode);
       rooms[newPlayer.roomCode] = { hostSocket: socket.id };
       rooms[newPlayer.roomCode]["playerOrder"] = new PlayerOrder();
-      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name})
+      rooms[newPlayer.roomCode]["playerOrder"].addBack({ socketId: socket.id, name: newPlayer.name })
       io.to(socket.id).emit('newPlayer', { host: true, name: newPlayer.name, roomCode: newPlayer.roomCode });
       io.to(socket.id).emit('setPlayers', [newPlayer.name])
     }
@@ -124,9 +126,10 @@ io.on('connection', socket => {
   //END GAME LOBBY ROUTES
 
   //GAME START ROUTES
-  socket.on('createGame', (roomCode) => {
+  socket.on('createGame', (obj) => {//obj contains roomCode and pointLimit
     console.log('game created!!');
-    setupGame(roomCode);
+    rooms[roomCode]['pointLimit'] = obj.pointLimit;
+    setupGame(obj.roomCode);
   });
 
 
@@ -160,17 +163,17 @@ io.on('connection', socket => {
   socket.on('pass', (roomCode) => {
     console.log('turn passed');
     io.to(rooms[roomCode]['playerOrder'].moveTailToFront().head.socket).emit('giveCard', true);
-  });+
+  }); +
 
-  socket.on('handCard', (obj) => {
-    rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
-    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
-    io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
-  });
+    socket.on('handCard', (obj) => {
+      rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
+      io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
+      io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().display().head.socket).emit('yourTurn', true);
+    });
 
   socket.on('roundOver', (roomCode) => {
     let runner = rooms[roomCode]['playerOrder'].head;
-    while (runner){
+    while (runner) {
       io.to(runner.socket).emit('getScore', runner.socket);
       runner = runner.next;
     }
@@ -179,15 +182,26 @@ io.on('connection', socket => {
   socket.on('getScore', (obj) => {
     let runner = rooms[obj.roomCode]['playerOrder'].head;
     let scores = {};
-    while (runner){
-      if (runner.socket === socket.id){
+    let gameOver = false;
+    while (runner) {
+      if (runner.socket === socket.id) {
         runner.score += obj.score;
+      }
+      if (runner.score > rooms[obj.roomCode]['pointLimit']) {
+        gameOver = true;
       }
       scores[runner.name] = runner.score;
       runner = runner.next;
     }
-    io.to(rooms[obj.roomCode]).emit('setScores', scores);
-    redeal(obj.roomCode);
+    if (gameOver) {
+      io.to(obj.roomCode).emit('gameOver', scores);
+      io.to(rooms[obj.roomCode]).emit('setScores', scores);
+      io.to(rooms[obj.roomCode]).emit('setRoomCode', obj.roomCode);
+    } else {
+      io.to(rooms[obj.roomCode]).emit('setScores', scores);
+      redeal(obj.roomCode);
+    }
+
   })
   //END GAME ROUTES
 
@@ -205,7 +219,7 @@ function sendPlayerInfo(roomCode) {
   console.log(scores);
   runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
-    io.to(runner.socket).emit('playerInfo', { 'roomCode': roomCode, 'name': runner.name, 'scores':scores})
+    io.to(runner.socket).emit('playerInfo', { 'roomCode': roomCode, 'name': runner.name, 'scores': scores })
     runner = runner.next;
   }
   io.to(rooms[roomCode]['hostSocket']).emit('setHost', null);
@@ -231,7 +245,7 @@ function getRooms() {
 //   return false;
 // } 
 
-function redeal(roomCode){
+function redeal(roomCode) {
   rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
   rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
   io.to(obj.roomCode).emit("setCards", { 'min': rooms[obj.roomCode]["min"], 'max': rooms[obj.roomCode]["max"] });
@@ -244,7 +258,7 @@ function setupGame(roomCode) {
   console.log('setting up game');
   rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
   rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
-  io.to(roomCode).emit('createGame', null);
+  io.to(roomCode).emit('createGame', roomCode);
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
   deal(rooms[roomCode]["deck"], roomCode);
   sendPlayerInfo(roomCode);
@@ -307,7 +321,7 @@ function buildDeck(playerCount) {
   let oneDeck = [];
   let cardPool = [];
   let suits = ['S', 'D', 'C', 'H'];
-  let cardNames = ['','Ace', '1','2','3','4','5','6','7','8','9','10','Jack','Queen','King'];
+  let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King'];
   let cardValue;
   let joker = {
     number: 0
@@ -359,7 +373,7 @@ function testSetup(socket) {
     //joins to room
     socket.join(roomCode);
     //creates player node in DLL
-    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count]})
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count] })
     //sets player to host list.
     io.to(rooms[roomCode].hostSocket).emit('addPlayerToHostList', names[count]);
     //gets all players
@@ -371,7 +385,7 @@ function testSetup(socket) {
     socket.join(roomCode);
     rooms[roomCode] = { hostSocket: socket.id };
     rooms[roomCode]["playerOrder"] = new PlayerOrder();
-    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count]})
+    rooms[roomCode]["playerOrder"].addBack({ socketId: socket.id, name: names[count] })
     io.to(socket.id).emit('newPlayer', { host: true, name: names[count], roomCode: roomCode });
     io.to(socket.id).emit('setPlayers', [names[count]])
     io.to(socket.id).emit('testMoveToLobby', roomCode);
