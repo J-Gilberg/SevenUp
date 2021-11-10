@@ -7,6 +7,17 @@ Languages: JavaScript
 Frontend: React
 Backend: Express, Socket.io, node.js
 
+MVP:
+- Players join a room via a roomcode to play a game together.
+- A complete game can be played
+  - multiple rounds.
+- score is tailed automatically
+- error prevention
+  - ensure cards are played in accordance to the rules
+- do not use a database
+- utilize server to handle heavy game logic
+- ensure all clients display the same game state while also maintaining unique hand states
+
 SevenUp-SevenDown is a card game typically played with 4 players. 
 
 The Game Rules:
