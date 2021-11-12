@@ -53,7 +53,7 @@ const GameLobby = () => {
 
     //GAME START TOUTES
     socket.on('createGame', (roomCode) => {
-        history.push('/game'+roomCode);
+        history.push('/game/'+roomCode);
     });
     //END GAME START ROUTES
 

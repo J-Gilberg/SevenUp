@@ -1,4 +1,5 @@
 import React, { useContext, useState } from 'react';
+import { SocketContext } from '../context/Socket';
 import { useHistory } from 'react-router-dom';
 
 
