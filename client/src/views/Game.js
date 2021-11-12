@@ -31,6 +31,7 @@ const Game = (props) => {
     const [sevenClubsPlayed, setSevenClubsPlayed] = useState(false);
     const [images, setImages] = useState(imageLoader());
     const [scores, setScores] = useState({});
+    const history = useHistory();
 
     // useEffect(() => {
     // }, [yourTurn])
@@ -103,8 +104,8 @@ const Game = (props) => {
 
     //GAME END
 
-    socket.off('gameOver').on('gameOver', (roomCode)=>{
-        history.push('/gameEnd/'+roomCode);
+    socket.off('gameOver').on('gameOver', (roomCode) => {
+        history.push('/gameEnd/' + roomCode);
     })
 
     //END GAME END
@@ -219,7 +220,7 @@ const Game = (props) => {
         let suitNames = getSuitNames();
         if (selectedCard.number === 0) {
             let plays = [];
-            let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
+            let cardNames = ['', 'Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
             Object.keys(min).forEach((suit) => {
                 console.log(`suit ${suit}`);
                 console.log(`suit min ${min[suit]['min']}`);
@@ -230,7 +231,7 @@ const Game = (props) => {
             setSelectPlay(plays);
             console.log(selectPlay);
         } else {
-            let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
+            let cardNames = ['', 'Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
             if (min[selectedCard.suit]['min'] === 1) setSelectPlay([{ 'suit': selectedCard.suit, 'number': 1, 'desc': `${cardNames[min[selectedCard.suit]['min']]} of ${suitNames[selectedCard.suit]}` }]);
             if (max[selectedCard.suit]['max'] === 14) setSelectPlay([...selectPlay, { 'suit': selectedCard.suit, 'number': 14, 'desc': `${cardNames[max[selectedCard.suit]['max']]} of ${suitNames[selectedCard.suit]}` }]);
             console.log(selectPlay);
