@@ -68,7 +68,8 @@ const Game = (props) => {
     });
 
     socket.off('setCards').on('setCards', (obj) => {
-        setSevenClubsPlayed(true);
+        if (obj.min.S.min === 7) setSevenClubsPlayed(false);
+        else setSevenClubsPlayed(true);
         setMin(obj.min);
         setMax(obj.max);
     })
@@ -166,6 +167,9 @@ const Game = (props) => {
             setGive(false);
             setErrors('');
             socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
+            if (hand.filter(card => !card.played).length === 0) {
+                socket.emit("roundOver", roomCode);
+            }
         } else if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
             getPlays(selectedCard);
             setCardSelected(selectedCard);
@@ -194,7 +198,6 @@ const Game = (props) => {
         setYourTurn(false);
         setErrors('');
         setSelectPlay([]);
-        console.log(hand.filter(card => !card.played).length);
         if (hand.filter(card => !card.played).length === 0) {
             socket.emit("roundOver", roomCode);
         } else {

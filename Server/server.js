@@ -94,7 +94,7 @@ io.on('connection', socket => {
   testSetup(socket);
   //^^^^^^^^ REMOVE IF YOU WANT TO STOP TESTING!!!!
   //GENERAL ROUTES
-  socket.on('disconnect', ()=>{
+  socket.on('disconnect', () => {
     console.log(socket.rooms);
   });
   //END GENERAL ROUTES
@@ -196,7 +196,7 @@ io.on('connection', socket => {
       io.to(obj.roomCode).emit('gameOver', scores);
       io.to(rooms[obj.roomCode]).emit('setScores', scores);
       io.to(rooms[obj.roomCode]).emit('setRoomCode', obj.roomCode);
-    } else if(Object.keys(scores).length === rooms[obj.roomCode]['playerOrder'].count){
+    } else if (Object.keys(scores).length === rooms[obj.roomCode]['playerOrder'].count) {
       io.to(rooms[obj.roomCode]).emit('setScores', scores);
       redeal(obj.roomCode);
     }
@@ -248,8 +248,9 @@ function redeal(roomCode) {
   rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
   rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
   io.to(roomCode).emit("setCards", { 'min': rooms[roomCode]["min"], 'max': rooms[roomCode]["max"] });
-  deal(rooms[roomCode]["deck"], roomCode);
-  io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
+  deal(rooms[roomCode]["deck"], roomCode)
+
+  // io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
 }
 
 function setupGame(roomCode) {
@@ -261,7 +262,7 @@ function setupGame(roomCode) {
   rooms[roomCode]["deck"] = buildDeck(rooms[roomCode]["playerOrder"].count);
   deal(rooms[roomCode]["deck"], roomCode);
   sendPlayerInfo(roomCode);
-  io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
+  // io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
 }
 
 // DECK FUNCTIONS
@@ -277,6 +278,7 @@ function shuffle(cardPool) {
 }
 
 function deal(deck, roomCode) {
+  let runner = {};
   deck = shuffle(deck);
   console.log('dealing');
   var playerCount = rooms[roomCode]["playerOrder"].count;
@@ -289,6 +291,8 @@ function deal(deck, roomCode) {
   for (let j = 0; j < deck.length; ++j) {
     if (deck[j].uid.substring(1, 4) === '07S') {
       rooms[roomCode]["startingPlayer"] = handNum;
+
+
     }
     playerHands[handNum - 1].push(deck[j]);
     ++handNum;
@@ -297,8 +301,9 @@ function deal(deck, roomCode) {
     }
   }
   //add hands to rooms object
-  let runner = rooms[roomCode]['playerOrder'].head;
+
   let i = 0;
+  runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
     io.to(runner.socket).emit('playerHand', playerHands[i]);
     runner.hand = playerHands[i];
@@ -310,6 +315,7 @@ function deal(deck, roomCode) {
     rooms[roomCode]['playerOrder'].moveHeadToBack();
     i++;
   }
+  io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
 }
 
 function buildDeck(playerCount) {
