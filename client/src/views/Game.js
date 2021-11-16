@@ -56,9 +56,11 @@ const Game = (props) => {
     });
 
     socket.off('jokerPlayed').on('jokerPlayed', (selectedCard) => {
-        for (let i = 0; i < hand.length; ++i) {
-            if (hand[i].number === selectedCard.number && hand[i].suit === selectedCard.suit) hand[i].value = 50;
+        let tempHand = hand;
+        for (let i = 0; i < tempHand.length; ++i) {
+            if (tempHand[i].number === selectedCard.number && tempHand[i].suit === selectedCard.suit) tempHand[i].value = 50;
         }
+        setHand(tempHand);
     })
 
     socket.off('setCards').on('setCards', (obj) => {
