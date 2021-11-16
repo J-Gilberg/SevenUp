@@ -2,17 +2,8 @@ import React, { useContext, useState } from 'react'
 import { useHistory } from 'react-router';
 import { SocketContext } from "../context/Socket";
 import imageLoader from '../images/images';
-
-
-// //IMPORT IMAGES
-// function importAll(r) {
-//     let cardImages = {};
-//     r.keys().map(item => { cardImages[item.replace('./', '')] = r(item); });
-//     return cardImages;
-// }
-
-// const cardImages = importAll(require.context('../images/cards', false, '/\.png/'));
-// //END IMPORT IMAGES
+import { sortHand, getSuitNames } from '../components/ManageCards';
+import { getHandStyles, getSuitStackMaxStyles, getSuitStackMinStyles } from '../components/StyleFunctions';
 
 const Game = (props) => {
     const socket = useContext(SocketContext);
@@ -31,11 +22,8 @@ const Game = (props) => {
     const [sevenClubsPlayed, setSevenClubsPlayed] = useState(false);
     const [images] = useState(imageLoader());
     const [scores, setScores] = useState({});
-    const [pointLimit, setPointLimit] =  useState(250);
+    const [pointLimit, setPointLimit] = useState(250);
     const history = useHistory();
-
-    // useEffect(() => {
-    // }, [yourTurn])
 
     //PLAYER INIT ROUTES
     socket.on('playerInfo', (playerInfo) => {
@@ -52,11 +40,7 @@ const Game = (props) => {
 
     //END PLAYER INIT ROUTES
 
-    //GAME LOGIC
-    // socket.on('cardPlayed', card => {
-    //     cardsPlayed.push(card);
-    // });
-
+    //PLAYER TURN ROUTES
     socket.off('yourTurn').on('yourTurn', (isTurn) => {
         setYourTurn(isTurn);
         console.log(`YourTurn: ${yourTurn}`);
@@ -64,7 +48,9 @@ const Game = (props) => {
             socket.emit("myTurn", roomCode);
         }
     });
+    //END PLAYER TURN ROUTES
 
+    //CARD MOVEMENT ROUTES
     socket.off('playerHand').on('playerHand', hand => {
         setHand(sortHand(hand));
     });
@@ -73,7 +59,6 @@ const Game = (props) => {
         for (let i = 0; i < hand.length; ++i) {
             if (hand[i].number === selectedCard.number && hand[i].suit === selectedCard.suit) hand[i].value = 50;
         }
-
     })
 
     socket.off('setCards').on('setCards', (obj) => {
@@ -93,9 +78,12 @@ const Game = (props) => {
     })
 
     socket.off('handCard').on('handCard', (card) => {
-        setHand([...hand, card]);
+        setHand(sortHand([...hand, card]));
     })
 
+    //END CARD MOVEMENT ROUTES
+
+    //SCORE ROUTES
     socket.off('getScore').on('getScore', (socketId) => {
         let score = 0;
         let cardsLeft = hand.filter(card => !card.played);
@@ -110,101 +98,15 @@ const Game = (props) => {
         console.log(obj);
         setScores(obj);
     });
-    //END GAME LOGIC
+    //END SCORE ROUTES
 
     //GAME END
-
     socket.off('gameOver').on('gameOver', (roomCode) => {
         history.push('/gameEnd/' + roomCode);
     })
-
     //END GAME END
 
-    //DISPLAY FUNCTIONS
-    const sortHand = (hand) => {
-        let cardSuits = { 'S': [], 'D': [], 'C': [], 'H': [], 'A': [] }
-        let output = [];
-        hand.forEach(card => {
-            cardSuits[card.suit].push(card);
-        });
-        Object.keys(cardSuits).forEach((suit) => {
-            let sorted = false;
-            let i = 0;
-            let changes = false;
-            if (cardSuits[suit].length <= 0) {
-                sorted = true;
-            } else if (cardSuits[suit].length === 1) {
-                sorted = true;
-            }
-            while (!sorted) {
-                if (cardSuits[suit][i].number < cardSuits[suit][i + 1].number) {
-                    [cardSuits[suit][i], cardSuits[suit][i + 1]] = [cardSuits[suit][i + 1], cardSuits[suit][i]];
-                    changes = true;
-                }
-                if (i + 1 < cardSuits[suit].length - 1) {
-                    ++i
-                } else if (!changes) {
-                    sorted = true;
-                } else {
-                    changes = false;
-                    i = 0;
-                }
-            }
-            console.log(cardSuits[suit]);
-            if (cardSuits[suit].length > 0) {
-                console.log(cardSuits[suit]);
-                output = [...output, ...cardSuits[suit]];
-            }
-        });
-        console.log(output);
-        return output;
-    }
-    //END DISPLAY FUNCTIONS
-
-    //DISPLAY LOGIC
-
-    // onclick for card, set card in hand and overall card pool to played
-    // display on 1st game board by default, if not, move on to next available/possible board 
-    // 
-    const onClickHandler = (selectedCard) => {
-        console.log('Card Selected' + selectedCard.uid);
-        console.log(selectedCard);
-
-        if (give) {
-            console.log('made it through is give');
-            socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
-            setYourTurn(false);
-            setGive(false);
-            setErrors('');
-            if(hand.length > 1) setHand(hand.filter(card => card.uid !== selectedCard.uid));
-            else {
-                setHand([]);
-                socket.emit("roundOver", roomCode);
-            }
-            console.log(`Hand Length ${hand.length}`);
-            console.log(hand);
-        } else if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
-            getPlays(selectedCard);
-            setCardSelected(selectedCard);
-        } else if (sevenClubsPlayed && min[selectedCard.suit]['min'] - selectedCard.number === 0 && selectedCard.number > min['S']['min']) {
-            playCard(selectedCard)
-        } else if (sevenClubsPlayed && max[selectedCard.suit]['max'] - selectedCard.number === 0 && max['S']['max'] > selectedCard.number) {
-            playCard(selectedCard);
-        } else if (selectedCard.suit === 'S' && min[selectedCard.suit]['min'] - selectedCard.number === 0) {
-            playCard(selectedCard);
-        } else if (selectedCard.suit === 'S' && max[selectedCard.suit]['max'] - selectedCard.number === 0) {
-            playCard(selectedCard);
-        } else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
-            playCard(selectedCard);
-        } else {
-            if (sevenClubsPlayed) {
-                setErrors('Play a valid card');
-            } else {
-                setErrors('Play your 7 of Spades');
-            }
-        }
-    }
-
+    //GAME LOGIC
     const playCard = (selectedCard) => {
         console.log('made it through card logic');
         if (selectedCard.uid === '00A') socket.emit('jokerPlayed', { 'roomCode': roomCode, 'selectedCard': selectedCard });
@@ -212,7 +114,7 @@ const Game = (props) => {
         setErrors('');
         setSelectPlay([]);
         setCardSelected({ uid: '', number: 0, suit: '' });
-        if(hand.length > 1){
+        if (hand.length > 1) {
             setHand(hand.filter(card => card.uid !== selectedCard.uid));
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
         } else {
@@ -221,20 +123,6 @@ const Game = (props) => {
         }
         console.log('hand');
         console.log(hand);
-    }
-
-    const playHandler = (e) => {
-        e.preventDefault();
-        console.log(selectPlay[e.target.value]);
-        setPlay(selectPlay[e.target.value]);
-        console.log(play);
-    }
-    const optionHandler = () => {
-        let tempCard = cardSelected;
-        tempCard.number = play.number;
-        tempCard.suit = play.suit;
-        onClickHandler(tempCard);
-        setCardSelected({ uid: '', number: 0, suit: '' });
     }
 
     const getPlays = (selectedCard) => {
@@ -275,45 +163,65 @@ const Game = (props) => {
         setErrors('');
         setSelectPlay([]);
     }
+    //END GAME LOGIC
 
-    const getHandStyles = (i) => {
-        return {
-            position: 'absolute'
-            , zindex: i
-            , left: (i * 30) + 'px'
-            , height: '120px'
-            , width: '80px'
+
+
+
+    //HANDLERS
+    const onClickHandler = (selectedCard) => {
+        console.log('Card Selected' + selectedCard.uid);
+        console.log(selectedCard);
+
+        if (give) {
+            console.log('made it through is give');
+            socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
+            setYourTurn(false);
+            setGive(false);
+            setErrors('');
+            if (hand.length > 1) setHand(hand.filter(card => card.uid !== selectedCard.uid));
+            else {
+                setHand([]);
+                socket.emit("roundOver", roomCode);
+            }
+            console.log(`Hand Length ${hand.length}`);
+            console.log(hand);
+        } else if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
+            getPlays(selectedCard);
+            setCardSelected(selectedCard);
+        } else if (sevenClubsPlayed && min[selectedCard.suit]['min'] - selectedCard.number === 0 && selectedCard.number > min['S']['min']) {
+            playCard(selectedCard)
+        } else if (sevenClubsPlayed && max[selectedCard.suit]['max'] - selectedCard.number === 0 && max['S']['max'] > selectedCard.number) {
+            playCard(selectedCard);
+        } else if (selectedCard.suit === 'S' && min[selectedCard.suit]['min'] - selectedCard.number === 0) {
+            playCard(selectedCard);
+        } else if (selectedCard.suit === 'S' && max[selectedCard.suit]['max'] - selectedCard.number === 0) {
+            playCard(selectedCard);
+        } else if (selectedCard.uid.substring(1, 4) === '07S' && !sevenClubsPlayed) {
+            playCard(selectedCard);
+        } else {
+            if (sevenClubsPlayed) {
+                setErrors('Play a valid card');
+            } else {
+                setErrors('Play your 7 of Spades');
+            }
         }
     }
 
-    const getSuitStackMinStyles = (i) => {
-        return {
-            position: 'absolute'
-            , zIndex: 8 - i
-            , top: (90 - (i * 30)) + 'px'
-            , height: '120px'
-            , width: '80px'
-        }
+    const playHandler = (e) => {
+        e.preventDefault();
+        console.log(selectPlay[e.target.value]);
+        setPlay(selectPlay[e.target.value]);
+        console.log(play);
     }
-
-    const getSuitStackMaxStyles = (i) => {
-        return {
-            position: 'absolute'
-            , zIndex: (9 + i)
-            , top: (120 + (i * 30)) + 'px'
-            , height: '120px'
-            , width: '80px'
-        }
+    const optionHandler = () => {
+        let tempCard = cardSelected;
+        tempCard.number = play.number;
+        tempCard.suit = play.suit;
+        onClickHandler(tempCard);
+        setCardSelected({ uid: '', number: 0, suit: '' });
     }
-
-    const getSuitNames = (suit = 'All') => {
-        let suitNames = { 'S': 'Spades', 'D': 'Diamonds', 'H': 'Hearts', 'C': 'Clubs' };
-        if (suit === 'All') return suitNames;
-        return suitNames[suit];
-    }
-
-    //END DISPLAY LOGIC
-    //
+    //END HANDLERS
 
     return (
         <div className='gameContainer background'>
@@ -445,7 +353,6 @@ const Game = (props) => {
             </div>
         </div>
     )
-
 }
 
 export default Game;

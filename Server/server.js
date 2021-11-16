@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const server = app.listen(8000, () => console.log('The server is all fired up on port 8000'));
 const io = require('socket.io')(server, { cors: true });
+const {buildDeck , shuffle} = require('./components/ManageCards');
 
 // roomCode > hostSocket,deck,playerOrder > socket,name
 var rooms = {};
@@ -15,7 +16,6 @@ class Player {
     this.prev = null;
     this.count = 0;
     this.gameOver = false;
-
   }
 }
 
@@ -244,6 +244,61 @@ function getRooms() {
   return res;
 }
 
+
+// DEAL FUNCTIONS
+function deal(deck, roomCode) {
+  let runner = {};
+  deck = shuffle(deck);
+  console.log('dealing');
+  var playerCount = rooms[roomCode]["playerOrder"].count;
+  var handNum = 1;
+  var playerHands = [];
+
+  for (let i = 0; i < playerCount; ++i) {
+      playerHands.push([]);
+  }
+  for (let j = 0; j < deck.length; ++j) {
+      if (deck[j].uid.substring(1, 4) === '07S') {
+          rooms[roomCode]["startingPlayer"] = handNum;
+
+
+      }
+      playerHands[handNum - 1].push(deck[j]);
+      ++handNum;
+      if (handNum === playerCount + 1) {
+          handNum = 1;
+      }
+  }
+  //add hands to rooms object
+
+  let i = 0;
+  runner = rooms[roomCode]['playerOrder'].head;
+  while (runner) {
+      io.to(runner.socket).emit('playerHand', playerHands[i]);
+      runner.hand = playerHands[i];
+      runner = runner.next;
+      ++i;
+  }
+  i = 1;
+  while (i < rooms[roomCode]["startingPlayer"]) {
+      rooms[roomCode]['playerOrder'].moveHeadToBack();
+      i++;
+  }
+  io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
+}
+
+function redeal(roomCode) {
+  rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
+  rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
+  io.to(roomCode).emit("setCards", { 'min': rooms[roomCode]["min"], 'max': rooms[roomCode]["max"] });
+  deal(rooms[roomCode]["deck"], roomCode)
+
+  // io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
+}
+
+
+//END DEAL FUNCTIONS
+
 //// use this for validation later on?
 // function getSocketsInRoom(roomCode) {
 //   const arr = Array.from(io.sockets.adapter.rooms).filter(room => !room[1].has(room[0]));
@@ -257,14 +312,7 @@ function getRooms() {
 //   return false;
 // } 
 
-function redeal(roomCode) {
-  rooms[roomCode]["min"] = { 'C': { min: 7, cardsPlayed: [] }, 'D': { min: 7, cardsPlayed: [] }, 'H': { min: 7, cardsPlayed: [] }, 'S': { min: 7, cardsPlayed: [] } };
-  rooms[roomCode]["max"] = { 'C': { max: 7, cardsPlayed: [] }, 'D': { max: 7, cardsPlayed: [] }, 'H': { max: 7, cardsPlayed: [] }, 'S': { max: 7, cardsPlayed: [] } };
-  io.to(roomCode).emit("setCards", { 'min': rooms[roomCode]["min"], 'max': rooms[roomCode]["max"] });
-  deal(rooms[roomCode]["deck"], roomCode)
 
-  // io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
-}
 
 function setupGame(obj) {
   // rooms[roomCode]["playerOrder"] = getSocketsInRoom(roomCode); //use to validate users still in lobby?
@@ -278,109 +326,6 @@ function setupGame(obj) {
   sendPlayerInfo(obj.roomCode);
   // io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
 }
-
-// DECK FUNCTIONS
-
-
-function shuffle(cardPool) {
-  console.log('shuffling');
-  for (let i = cardPool.length - 1; i >= 0; i--) {
-    let x = Math.floor(Math.random() * i + 1);
-    [cardPool[i], cardPool[x]] = [cardPool[x], cardPool[i]];
-  }
-  return cardPool
-}
-
-function deal(deck, roomCode) {
-  let runner = {};
-  deck = shuffle(deck);
-  console.log('dealing');
-  var playerCount = rooms[roomCode]["playerOrder"].count;
-  var handNum = 1;
-  var playerHands = [];
-
-  for (let i = 0; i < playerCount; ++i) {
-    playerHands.push([]);
-  }
-  for (let j = 0; j < deck.length; ++j) {
-    if (deck[j].uid.substring(1, 4) === '07S') {
-      rooms[roomCode]["startingPlayer"] = handNum;
-
-
-    }
-    playerHands[handNum - 1].push(deck[j]);
-    ++handNum;
-    if (handNum === playerCount + 1) {
-      handNum = 1;
-    }
-  }
-  //add hands to rooms object
-
-  let i = 0;
-  runner = rooms[roomCode]['playerOrder'].head;
-  while (runner) {
-    io.to(runner.socket).emit('playerHand', playerHands[i]);
-    runner.hand = playerHands[i];
-    runner = runner.next;
-    ++i;
-  }
-  i = 1;
-  while (i < rooms[roomCode]["startingPlayer"]) {
-    rooms[roomCode]['playerOrder'].moveHeadToBack();
-    i++;
-  }
-  io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
-}
-
-function buildDeck(playerCount) {
-  console.log('building deck');
-  // < 6 => 1 deck
-  // everyone needs 10+ cards
-  let numDecks = Math.ceil(10 / (53 / playerCount));
-  let oneDeck = [];
-  let cardPool = [];
-  let suits = ['S', 'D', 'C', 'H'];
-  let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King'];
-  let cardValue;
-  let joker = {
-    number: 0
-    , suit: "A"
-    , value: 50
-    , played: false
-    , uid: '00A'
-  }
-
-  for (var i = 0; i < numDecks; ++i) {
-    oneDeck = [];
-    for (var j = 0; j < 4; ++j) {
-      for (var k = 1; k <= 13; ++k) {
-        if (k === 1) {
-          cardValue = 15;
-        }
-        else if (k <= 10) {
-          cardValue = k;
-        }
-        else {
-          cardValue = 10;
-        }
-        let strK = '0' + k
-        oneDeck.push({
-          number: k
-          , suit: suits[j]
-          , cardName: cardNames[k]
-          , value: cardValue
-          , played: false
-          , uid: `${i}${strK.substring(strK.length - 2, strK.length)}${suits[j]}`
-        })
-      }
-    }
-    joker.uid = i + joker.uid;
-    cardPool = [...cardPool, ...oneDeck, joker]
-  }
-  return cardPool;
-}
-//END DECK FUNCTIONS
-
 
 //TEST SETUP!!
 function testSetup(socket) {
