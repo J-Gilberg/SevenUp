@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router";
 import { SocketContext } from "../context/Socket";
 import { useHistory } from "react-router-dom";
 
@@ -13,7 +12,7 @@ const GameLobby = () => {
     const [players, setPlayers] = useState([]);
     const history = useHistory();
     const [host, setHost] = useState(false);
-    const [pointLimit, setPointLimit] = useState(250);
+    const [pointLimit, setPointLimit] = useState(50);
 
     useEffect(() => {
         socket.on('connection', () => {
@@ -72,12 +71,12 @@ const GameLobby = () => {
 
     //END EVENT HANDLERS
     return (
-        <div>
+        <div className="background">
             <h1>Room Code: {roomCode}</h1>
             <h2>Welcome to the Room: {playerName}</h2>
             {host ? <p>You Are the Host</p>: <p></p>}
             <label>Point Limit</label>
-            <input value={pointLimit} type="number" onChange={pointLimitHandler}/>
+            {host && <input value={pointLimit} type="number" onChange={pointLimitHandler}/>}
             {
                 players.map((playerName) => {
                     return <div>{playerName}</div>

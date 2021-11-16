@@ -17,7 +17,7 @@ function App() {
 
   return (
     <SocketContext.Provider value={Socket}>
-      <div className="App background">
+      <div className="App">
         <BrowserRouter>
           <Switch>
             <Route exact path="/">

@@ -57,7 +57,7 @@ const GameEnd = (props) => {
                     <h1>{rankings[0]} is the Winner</h1>
                     <ul>
                         {rankings.map((player, i)=>{
-                            <li>{i+1}. {player.name}: {player.points}</li>
+                            return(<li>{i+1}. {player.name}: {player.points}</li>);
                         })}
                     </ul>
                     <button onClick={onClickHandler}>Play Again</button>
