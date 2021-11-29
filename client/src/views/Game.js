@@ -169,9 +169,6 @@ const Game = (props) => {
 
     //END GAME LOGIC
 
-
-
-
     //HANDLERS
     const onClickHandler = (selectedCard) => {
         console.log('Card Selected' + selectedCard.uid);
