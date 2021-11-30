@@ -127,7 +127,8 @@ io.on('connection', socket => {
     if (Object.keys(rooms[obj.roomCode]['playerOrder'].playerScores).length === rooms[obj.roomCode]['playerOrder'].count) {
       console.log('All Scores Saved')
       if (rooms[obj.roomCode]['playerOrder'].gameOver) {
-        io.to(obj.roomCode).emit('gameOver', rooms[obj.roomCode]['playerOrder'].playerScores);
+        io.to(obj.roomCode).emit('gameOver');
+        io.to(obj.roomCode).emit('setScores', rooms[obj.roomCode]['playerOrder'].playerScores);
         io.to(obj.roomCode).emit('setRoomCode', obj.roomCode);
       } else {
         io.to(obj.roomCode).emit('setScores', rooms[obj.roomCode]['playerOrder'].playerScores);

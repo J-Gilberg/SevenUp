@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { useHistory } from 'react-router';
 import { SocketContext } from "../context/Socket";
 import imageLoader from '../images/images';
@@ -12,7 +12,14 @@ const Game = (props) => {
     const [give, setGive] = useState(false);
     const [host, setHost] = useState(false);
     const [selectPlay, setSelectPlay] = useState([]);
-    const [cardSelected, setCardSelected] = useState({ uid: '', number: 0, suit: '' });
+    const [cardSelected, setCardSelected] = useState({
+        cardName: ''
+        , number: 0
+        , played: false
+        , suit: ''
+        , uid: ''
+        , value: 0
+    });
     const [hand, setHand] = useState([]);
     const [play, setPlay] = useState({});
     const [yourTurn, setYourTurn] = useState(false);
@@ -24,6 +31,8 @@ const Game = (props) => {
     const [scores, setScores] = useState({});
     const [pointLimit, setPointLimit] = useState(250);
     const history = useHistory();
+
+    useEffect(() => { }, [cardSelected]);
 
     //PLAYER INIT ROUTES
     socket.on('playerInfo', (playerInfo) => {
@@ -103,7 +112,7 @@ const Game = (props) => {
     //END SCORE ROUTES
 
     //GAME END
-    socket.off('gameOver').on('gameOver', (roomCode) => {
+    socket.off('gameOver').on('gameOver', () => {
         history.push('/gameEnd/' + roomCode);
     })
     //END GAME END
@@ -111,8 +120,8 @@ const Game = (props) => {
     //GAME LOGIC
     const playCard = (selectedCard) => {
         console.log('made it through card logic');
-        if (selectedCard.uid === '00A') socket.emit('jokerPlayed', { 'roomCode': roomCode, 'selectedCard': selectedCard });
         resetTurn();
+        if (selectedCard.uid === '00A') socket.emit('jokerPlayed', { 'roomCode': roomCode, 'selectedCard': selectedCard });
         if (hand.length > 1) {
             setHand(hand.filter(card => card.uid !== selectedCard.uid));
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
@@ -120,6 +129,7 @@ const Game = (props) => {
             setHand([]);
             socket.emit("roundOver", roomCode);
         }
+
         console.log('hand');
         console.log(hand);
     }
@@ -127,7 +137,9 @@ const Game = (props) => {
     const getPlays = (selectedCard) => {
         let suitNames = getSuitNames();
         let plays = [];
-        let cardNames = ['', 'Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King', 'Ace']
+        let cardNames = ['', 'Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King', 'Ace'];
+        console.log('get plays');
+        console.log('Card Selected ' + selectedCard.uid);
         if (selectedCard.number === 0) {
             Object.keys(min).forEach((suit) => {
                 // console.log(`suit ${suit}`);
@@ -136,19 +148,24 @@ const Game = (props) => {
                 if (min[suit]['min'] >= 1) plays.push({ 'suit': suit, 'number': min[suit]['min'], 'desc': `${cardNames[min[suit]['min']]} of ${suitNames[suit]}` });
                 if (min[suit]['min'] !== max[suit]['max'] && max[suit]['max'] <= 14) plays.push({ 'suit': suit, 'number': max[suit]['max'], 'desc': `${cardNames[max[suit]['max']]} of ${suitNames[suit]}` });
             });
+        } else if (selectedCard.number === 1 && selectedCard.suit === 'S') {
+            if (min[selectedCard.suit]['min'] === 1) plays.push({ 'suit': selectedCard.suit, 'number': 1, 'desc': `Low` });
+            if (max[selectedCard.suit]['max'] === 14) plays.push({ 'suit': selectedCard.suit, 'number': 14, 'desc': `High` });
         } else {
-            if (min[selectedCard.suit]['min'] === 1) plays.push({ 'suit': selectedCard.suit, 'number': 1, 'desc': `${cardNames[min[selectedCard.suit]['min']]} of ${suitNames[selectedCard.suit]}` });
-            if (max[selectedCard.suit]['max'] === 14) plays.push({ 'suit': selectedCard.suit, 'number': 14, 'desc': `${cardNames[max[selectedCard.suit]['max']]} of ${suitNames[selectedCard.suit]}` });
-            console.log(`max of ace selected ${max[selectedCard.suit]['max']}`)
+            if (min[selectedCard.suit]['min'] === 1 && min['S']['min'] === 0) plays.push({ 'suit': selectedCard.suit, 'number': 1, 'desc': `Low` });
+            if (max[selectedCard.suit]['max'] === 14 && min['S']['min'] === 15) plays.push({ 'suit': selectedCard.suit, 'number': 14, 'desc': `High` });
         }
         console.log('selected playes vvvvvvv');
-        console.log(plays);
-        if (plays.length === 1) {
+        console.log(...plays);
+        if (plays.length === 0) {
+            setErrors('Play a valid card');
+        } else if (plays.length === 1) {
             console.log('only one play');
-            selectedCard.number = plays[0].number;
-            selectedCard.suit = plays[0].suit;
-            onClickHandler(selectedCard);
-        }else{
+            console.log(plays)
+            selectedCard.number = plays[0].number
+            selectedCard.suit = plays[0].suit
+            optionHandler(selectedCard);
+        } else {
             setSelectPlay(plays);
         }
     }
@@ -160,10 +177,19 @@ const Game = (props) => {
     }
 
     const resetTurn = () => {
+        console.log('reset turn');
         setYourTurn(false);
-        setCardSelected({ uid: '', number: 0, suit: '' });
+        setCardSelected({
+            cardName: ''
+            , number: 0
+            , played: false
+            , suit: ''
+            , uid: ''
+            , value: 0
+        });
         setErrors('');
         setSelectPlay([]);
+        setPlay({})
         setGive(false);
     }
 
@@ -171,9 +197,7 @@ const Game = (props) => {
 
     //HANDLERS
     const onClickHandler = (selectedCard) => {
-        console.log('Card Selected' + selectedCard.uid);
-        console.log(selectedCard);
-
+        console.log('Card Selected ' + selectedCard.uid);
         if (give) {
             console.log('made it through is give');
             socket.emit("handCard", { 'selectedCard': selectedCard, 'roomCode': roomCode });
@@ -185,11 +209,18 @@ const Game = (props) => {
             }
             console.log(`Hand Length ${hand.length}`);
             console.log(hand);
-        } else if (selectedCard.uid !== cardSelected.uid && selectedCard.number <= 1) {
-            console.log("Getting Plays")
+        } else if (selectedCard.number <= 1) {
             setCardSelected(selectedCard);
             getPlays(selectedCard);
-        } else if (sevenClubsPlayed && min[selectedCard.suit]['min'] - selectedCard.number === 0 && selectedCard.number > min['S']['min']) {
+        } else {
+            playableCard(selectedCard);
+        }
+
+    }
+
+    const playableCard = (selectedCard) => {
+        console.log(selectedCard);
+        if (sevenClubsPlayed && min[selectedCard.suit]['min'] - selectedCard.number === 0 && selectedCard.number > min['S']['min']) {
             playCard(selectedCard)
         } else if (sevenClubsPlayed && max[selectedCard.suit]['max'] - selectedCard.number === 0 && max['S']['max'] > selectedCard.number) {
             playCard(selectedCard);
@@ -206,6 +237,7 @@ const Game = (props) => {
                 setErrors('Play your 7 of Spades');
             }
         }
+
     }
 
     const playHandler = (e) => {
@@ -214,18 +246,20 @@ const Game = (props) => {
         setPlay(selectPlay[e.target.value]);
         console.log(play);
     }
-    const optionHandler = () => {
-        let tempCard = cardSelected;
-        tempCard.number = play.number;
-        tempCard.suit = play.suit;
-        onClickHandler(tempCard);
-        setCardSelected({ uid: '', number: 0, suit: '' });
+    const optionHandler = (selectedCard = null) => {
+        console.log("optionHandler");
+        console.log(cardSelected);
+        if (selectedCard === null) {
+            selectedCard = cardSelected;
+            selectedCard.number = play.number;
+            selectedCard.suit = play.suit;
+        }
+        playableCard(selectedCard);
     }
     //END HANDLERS
 
     return (
         <div className='gameContainer background'>
-            {give ? <div>Select a card to pass on</div> : ""}
             <div className="gameBoard">
                 <div className='spades suitStack'>
                     <div >
@@ -320,7 +354,11 @@ const Game = (props) => {
                     {yourTurn && hand.map((card, i) => {
                         return (
                             <div style={getHandStyles(i)}>
-                                {!card.played && <img className="cardImg card" onClick={() => onClickHandler(card)} src={images[`Minicard_${card.uid.substring(1)}`]} alt={card.uid.substring(1)} />}
+                                {!card.played && <img className="cardImg card" onClick={() => {
+                                    onClickHandler(card);
+                                }}
+                                    src={images[`Minicard_${card.uid.substring(1)}`]}
+                                    alt={card.uid.substring(1)} />}
                             </div>
                         )
                     })
@@ -339,8 +377,8 @@ const Game = (props) => {
                 {cardSelected.uid !== '' && <div className="options optionsBackground">
                     {cardSelected.number ? <p>{`Choose a play for ${cardSelected.cardName} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
                     <div className="cardSelect">
-                        <select onChange={playHandler} className="select">
-                            <option value="" selected>Select A Card</option>
+                        <select onChange={playHandler} className="select" defaultValue='Select A Card'>
+                            {/* <option value="" selected>Select A Card</option> */}
                             {selectPlay.map((option, i) => {
                                 return (<option value={i}>{option.desc}</option>)
                             })
@@ -349,7 +387,9 @@ const Game = (props) => {
                         <button className="button" onClick={() => { if (play.hasOwnProperty('suit')) { optionHandler() } }}>Play Card</button>
                     </div>
                 </div>}
-                {yourTurn && !give && <button className='button colorOrange buttonContainer' onClick={() => passTurn()}>Pass</button>}
+                <div className='buttonContainer'>
+                    {yourTurn && !give && <button className='button colorOrange' onClick={() => passTurn()}>Pass</button>}
+                </div>
             </div>
         </div>
     )
