@@ -64,10 +64,19 @@ const Game = (props) => {
         setHand(sortHand(hand));
     });
 
+    /*
+    Needs to find what player has the card and assign the value of that card to 50points. 
+    currently reciving { 'roomCode': roomCode, 'selectedCard': selectedCard }.
+    */
     socket.off('jokerPlayed').on('jokerPlayed', (selectedCard) => {
+        console.log("jokerPlayed")
+        console.log(selectedCard)
         let tempHand = hand;
         for (let i = 0; i < tempHand.length; ++i) {
-            if (tempHand[i].number === selectedCard.number && tempHand[i].suit === selectedCard.suit) tempHand[i].value = 50;
+            if (tempHand[i].number === selectedCard.number && tempHand[i].suit === selectedCard.suit) {
+                tempHand[i].value = 50;
+                console.log(tempHand[i].value);
+            }
         }
         setHand(tempHand);
     })
@@ -119,9 +128,12 @@ const Game = (props) => {
 
     //GAME LOGIC
     const playCard = (selectedCard) => {
-        console.log('made it through card logic');
-        resetTurn();
-        if (selectedCard.uid === '00A') socket.emit('jokerPlayed', { 'roomCode': roomCode, 'selectedCard': selectedCard });
+        console.log('playing card');
+        console.log(selectedCard);
+        if (selectedCard.cardName === 'Joker') {
+            socket.emit('jokerPlayed', { 'roomCode': roomCode, 'selectedCard': selectedCard });
+            console.log("jokerPlayed")
+        };
         if (hand.length > 1) {
             setHand(hand.filter(card => card.uid !== selectedCard.uid));
             socket.emit("playedCard", { 'roomCode': roomCode, 'selectedCard': selectedCard });
@@ -129,9 +141,9 @@ const Game = (props) => {
             setHand([]);
             socket.emit("roundOver", roomCode);
         }
-
         console.log('hand');
         console.log(hand);
+        resetTurn();
     }
 
     const getPlays = (selectedCard) => {
@@ -239,13 +251,15 @@ const Game = (props) => {
         }
 
     }
-
+    //HANDLER
     const playHandler = (e) => {
         e.preventDefault();
-        console.log(selectPlay[e.target.value]);
+        // console.log(selectPlay[e.target.value]);
         setPlay(selectPlay[e.target.value]);
         console.log(play);
     }
+
+    //HANDLER
     const optionHandler = (selectedCard = null) => {
         console.log("optionHandler");
         console.log(cardSelected);
@@ -375,7 +389,7 @@ const Game = (props) => {
             </div>
             <div className='options '>
                 {cardSelected.uid !== '' && <div className="options optionsBackground">
-                    {cardSelected.number ? <p>{`Choose a play for ${cardSelected.cardName} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>}
+                    {cardSelected.number ? <p>{`Choose a play for ${cardSelected.cardName} of ${getSuitNames(cardSelected.suit)}`}</p> : <p>{`Choose a play for the Joker`}</p>} //TODO - need to move this into playHandler
                     <div className="cardSelect">
                         <select onChange={playHandler} className="select" defaultValue='Select A Card'>
                             {/* <option value="" selected>Select A Card</option> */}

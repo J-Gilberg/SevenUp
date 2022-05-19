@@ -36,18 +36,17 @@ const GameEnd = (props) => {
             }
             if (scores[names[i]] < min) {
                 name = names[i];
-                min = scores[names[i]]
+                min = scores[names[i]];
             }
             ++i;
         }
         setRankings(rank);
-
     }
 
     const onClickHandler = e => {
         e.preventDefault();
         socket.leave(roomCode);
-        history.push('/')
+        history.push('/');
     }
 
     return (
@@ -65,6 +64,5 @@ const GameEnd = (props) => {
             }
         </div>
     )
-
 }
 export default GameEnd;

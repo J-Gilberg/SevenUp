@@ -15,10 +15,11 @@ exports.buildDeck = (playerCount) => {
     let oneDeck = [];
     let cardPool = [];
     let suits = ['S', 'D', 'C', 'H'];
-    let cardNames = ['', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King'];
+    let cardNames = ['Joker', 'Ace', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King'];
     let cardValue;
     let joker = {
         number: 0
+        , cardName : cardNames[0]
         , suit: "A"
         , value: 50
         , played: false
@@ -50,7 +51,7 @@ exports.buildDeck = (playerCount) => {
             }
         }
         joker.uid = i + joker.uid;
-        cardPool = [...cardPool, ...oneDeck, joker]
+        cardPool = [...cardPool, ...oneDeck, joker];
     }
     return cardPool;
 }

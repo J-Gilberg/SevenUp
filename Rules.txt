@@ -1,0 +1,33 @@
+Seven Up & Seven Down Card Game
+- Rules
+	- 53 cards, full deck plus 1 joker
+	- all cards delt
+	- turns go clockwise
+	- one card is played per turn
+	- spades determine floor and ceiling
+	- player with 7 spades starts
+	- cards must be played in sucession  
+	- if a player cannot play a card the player behind them pass a card of their choice.
+	- ace can be high or low, determined by where ace of spades is played.
+- Tech
+	- Sockets
+	- MySql
+		- User info and data
+	- Material UI 
+	- React Native - expo go
+- goals
+	- card game functionality
+		- rules functionality		
+		- divide up deck of cards between players
+		- take in num decks
+		- take in num players
+		- player can play a card
+	- sockets to connect all players 
+		- to their hands 
+		- the card they play.
+		- the card others play.
+		- the board.
+- strech goals
+	- fancy css
+	- animations
+	

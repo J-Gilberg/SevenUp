@@ -50,7 +50,7 @@ const GameLobby = () => {
     //END HOST SPECICIC ROUTES
 
 
-    //GAME START TOUTES
+    //GAME START ROUTES
     socket.on('createGame', (roomCode) => {
         history.push('/game/'+roomCode);
     });

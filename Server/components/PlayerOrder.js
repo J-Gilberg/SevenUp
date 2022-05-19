@@ -21,7 +21,7 @@ exports.PlayerOrder = class PlayerOrder {
             }
             let node = new Player(value);
             runner.next = node;
-            node.prev = runner
+            node.prev = runner;
             this.tail = node;
         }
         this.count++;

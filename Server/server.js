@@ -2,8 +2,8 @@ const express = require('express');
 const app = express();
 const server = app.listen(8000, () => console.log('The server is all fired up on port 8000'));
 const io = require('socket.io')(server, { cors: true });
-const {buildDeck , shuffle} = require('./components/ManageCards');
-const {PlayerOrder} = require('./components/PlayerOrder');
+const { buildDeck, shuffle } = require('./components/ManageCards');
+const { PlayerOrder } = require('./components/PlayerOrder');
 
 // roomCode > hostSocket,deck,playerOrder > socket,name
 var rooms = {};
@@ -87,13 +87,15 @@ io.on('connection', socket => {
     io.to(rooms[roomCode]['playerOrder'].moveTailToFront().head.socket).emit('giveCard', true);
   }); +
 
-  socket.on('handCard', (obj) => {
-    rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
-    io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
-    io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().head.socket).emit('yourTurn', true);
-  });
+    socket.on('handCard', (obj) => {
+      rooms[obj.roomCode]['playerOrder'].moveHeadToBack();
+      io.to(rooms[obj.roomCode]['playerOrder'].head.socket).emit('handCard', obj.selectedCard);
+      io.to(rooms[obj.roomCode]['playerOrder'].moveHeadToBack().head.socket).emit('yourTurn', true);
+    });
 
-  socket.on('jokerPlayed', (obj)=>{
+  socket.on('jokerPlayed', (obj) => {
+    console.log("joker played");
+    console.log(obj.selectedCard);
     io.to(obj.roomCode).emit('jokerPlayed', obj.selectedCard);
   })
 
@@ -153,7 +155,7 @@ function sendPlayerInfo(roomCode) {
   console.log(scores);
   runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
-    io.to(runner.socket).emit('playerInfo', { 'roomCode': roomCode, 'name': runner.name, 'scores': scores, 'pointLimit': rooms[roomCode]['pointLimit']})
+    io.to(runner.socket).emit('playerInfo', { 'roomCode': roomCode, 'name': runner.name, 'scores': scores, 'pointLimit': rooms[roomCode]['pointLimit'] })
     runner = runner.next;
   }
   io.to(rooms[roomCode]['hostSocket']).emit('setHost', null);
@@ -177,34 +179,34 @@ function deal(deck, roomCode) {
   var playerHands = [];
 
   for (let i = 0; i < playerCount; ++i) {
-      playerHands.push([]);
+    playerHands.push([]);
   }
   for (let j = 0; j < deck.length; ++j) {
-      if (deck[j].uid.substring(1, 4) === '07S') {
-          rooms[roomCode]["startingPlayer"] = handNum;
+    if (deck[j].uid.substring(1, 4) === '07S') {
+      rooms[roomCode]["startingPlayer"] = handNum;
 
 
-      }
-      playerHands[handNum - 1].push(deck[j]);
-      ++handNum;
-      if (handNum === playerCount + 1) {
-          handNum = 1;
-      }
+    }
+    playerHands[handNum - 1].push(deck[j]);
+    ++handNum;
+    if (handNum === playerCount + 1) {
+      handNum = 1;
+    }
   }
   //add hands to rooms object
 
   let i = 0;
   runner = rooms[roomCode]['playerOrder'].head;
   while (runner) {
-      io.to(runner.socket).emit('playerHand', playerHands[i]);
-      runner.hand = playerHands[i];
-      runner = runner.next;
-      ++i;
+    io.to(runner.socket).emit('playerHand', playerHands[i]);
+    runner.hand = playerHands[i];
+    runner = runner.next;
+    ++i;
   }
   i = 1;
   while (i < rooms[roomCode]["startingPlayer"]) {
-      rooms[roomCode]['playerOrder'].moveHeadToBack();
-      i++;
+    rooms[roomCode]['playerOrder'].moveHeadToBack();
+    i++;
   }
   io.to(rooms[roomCode]['playerOrder'].head.socket).emit('yourTurn', true);
 }
@@ -278,7 +280,7 @@ function testSetup(socket) {
     io.to(socket.id).emit('testMoveToLobby', roomCode);
   }
   if (rooms[roomCode]["playerOrder"].count === 4) {
-    setupGame({'roomCode': roomCode, 'pointLimit': pointLimit});
+    setupGame({ 'roomCode': roomCode, 'pointLimit': pointLimit });
   }
 }
 //END TEST SETUP!!
